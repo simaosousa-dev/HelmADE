@@ -2,11 +2,15 @@ pub mod commands;
 pub mod db;
 pub mod git;
 pub mod network;
+pub mod terminal;
 
 use commands::network::PortState;
+use commands::terminal::PtyState;
 use db::DbState;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
+use terminal::PtyManager;
 
 fn resolve_db_path() -> PathBuf {
     let mut dir = dirs_or_home();
@@ -30,10 +34,12 @@ pub fn run() {
     let db_state = DbState::new(db_path.to_str().unwrap_or("helmade.db"))
         .expect("falha crítica ao inicializar a base de dados SQLite local");
     let port_state = PortState::default();
+    let pty_state: PtyState = Arc::new(PtyManager::new());
 
     tauri::Builder::default()
         .manage(db_state)
         .manage(port_state)
+        .manage(pty_state)
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             // Comandos de Projetos & SQLite
@@ -55,6 +61,12 @@ pub fn run() {
             commands::network::release_swarm_port,
             commands::network::get_swarm_port,
             commands::network::get_swarm_env_vars,
+            // Comandos de Terminal PTY Multiplexer
+            commands::terminal::spawn_pty,
+            commands::terminal::write_pty,
+            commands::terminal::resize_pty,
+            commands::terminal::kill_pty,
+            commands::terminal::get_pty_scrollback,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
