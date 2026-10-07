@@ -57,6 +57,7 @@
 * `docs/adr/2026-10-06-0002-git-worktree-symlink-isolation.md`: Isolamento de grelhas por Git Worktree + symlink inteligente de dependências para prevenir duplicação de disco.
 * `docs/adr/2026-10-06-0003-zero-cost-local-speech-engine.md`: Uso do Apple Speech.framework nativo do macOS via FFI/Objective-C para transcrição offline a custo 0.00€.
 * `docs/adr/2026-10-06-0004-per-agent-model-selection.md`: Seleção dinâmica de modelo de IA por agente com perfis cognitivos (Deep Thinking, Research, Fast/Economic e Local 0.00€ via Ollama).
+* `docs/adr/2026-10-07-0005-pty-multiplexing-ring-buffer.md`: Motor PTY multiplexer em Rust com `portable-pty`, ring-buffer de 100.000 linhas por sessão e streaming IPC reativo via eventos Tauri.
 
 ---
 
@@ -70,4 +71,6 @@
 * ✅ **Task 1.4**: Gestor de Symlinks Automáticos de Dependências (`feat(git)`)
 * ✅ **Task 1.5**: Alocador Dinâmico de Portas TCP sem Colisão (`feat(network)`)
 * ✅ **Task 1.6**: Interface de Revisão e Fusão Segura (Diff & Merge View) (`feat(ui)`)
-* ⏳ **Próxima Tarefa em Fila**: **Task 2.1: Motor PTY Multiplexer em Rust com Buffer Circular (Módulo 3)**
+* ✅ **Task 2.1**: Motor PTY Multiplexer em Rust com Buffer Circular (`feat(pty)`)
+* ✅ **Task 2.2**: Integração do `@xterm/xterm` com WebGL e Renderização Rápida (`feat(terminal)`)
+* ⏳ **Próxima Tarefa em Fila**: **Task 2.3: Layouts de Grelha Tiled (1x1 a 4x4) e Zoom/Maximizar em 1 Toque (Módulo 3)**
