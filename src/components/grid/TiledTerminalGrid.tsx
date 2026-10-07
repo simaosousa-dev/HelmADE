@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { XTermWrapper } from '../terminal/XTermWrapper';
+import { XTermWrapper, TerminalHeader } from '../terminal';
 import {
   useGridLayoutStore,
   gridLayoutStore,
   getLayoutDimensions,
   type GridLayoutType,
 } from '../../stores/useGridLayoutStore';
+import type { TerminalPanelColor } from '../../types/terminal';
 
 export interface TiledTerminalGridProps {
   className?: string;
@@ -19,6 +20,14 @@ const GRID_LAYOUT_CLASSES: Record<GridLayoutType, string> = {
   '2x3': 'grid-cols-3 grid-rows-2',
   '3x3': 'grid-cols-3 grid-rows-3',
   '4x4': 'grid-cols-4 grid-rows-4',
+};
+
+const PANEL_ACTIVE_BORDER_CLASSES: Record<TerminalPanelColor, string> = {
+  gold: 'border-amber-400/70 ring-1 ring-amber-400/40',
+  blue: 'border-blue-500/70 ring-1 ring-blue-500/40',
+  green: 'border-emerald-400/70 ring-1 ring-emerald-400/40',
+  purple: 'border-purple-400/70 ring-1 ring-purple-400/40',
+  red: 'border-red-400/70 ring-1 ring-red-400/40',
 };
 
 /**
@@ -41,6 +50,9 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
     setActivePanelId,
     toggleMaximizePanel,
     removePanel,
+    updatePanelTitle,
+    updatePanelColor,
+    updatePanelStatus,
   } = useGridLayoutStore();
 
   const isMaximized = maximizedPanelId !== null && panels.some((p) => p.id === maximizedPanelId);
@@ -154,6 +166,8 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
         const isVisibleInGrid = !isMaximized && index < maxPanels;
         const isVisible = isThisMaximized || isVisibleInGrid;
         const isActive = activePanelId === panel.id;
+        const panelColor = panel.color ?? 'blue';
+        const activeBorderClass = PANEL_ACTIVE_BORDER_CLASSES[panelColor] ?? PANEL_ACTIVE_BORDER_CLASSES.blue;
 
         return (
           <div
@@ -167,98 +181,29 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
                 : 'w-full h-full'
             } ${
               isActive
-                ? 'border-blue-500/70 ring-1 ring-blue-500/40'
+                ? activeBorderClass
                 : 'border-white/10 hover:border-white/20'
             }`}
           >
-            {/* Cabeçalho do Painel Apple HIG */}
-            <header
-              onDoubleClick={() => toggleMaximizePanel(panel.id)}
-              className={`h-11 px-3 flex items-center justify-between border-b select-none transition-colors duration-150 cursor-pointer ${
-                isActive
-                  ? 'bg-[#1e222b] border-blue-500/40 text-white'
-                  : 'bg-[#161618] border-white/10 text-white/70 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {/* Indicador de estado ativo */}
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 transition-all ${
-                    isActive
-                      ? 'bg-accent-green shadow-[0_0_6px_rgba(48,209,88,0.7)]'
-                      : 'bg-white/20'
-                  }`}
-                  aria-hidden="true"
-                />
+            {/* Cabeçalho Semântico do Painel Apple HIG */}
+            <TerminalHeader
+              id={panel.id}
+              sessionId={panel.sessionId}
+              title={panel.title}
+              agentId={panel.agentId}
+              agentRole={panel.agentRole}
+              color={panel.color}
+              status={panel.status}
+              isActive={isActive}
+              isMaximized={isThisMaximized}
+              onTitleChange={(newTitle) => updatePanelTitle(panel.id, newTitle)}
+              onColorChange={(newColor) => updatePanelColor(panel.id, newColor)}
+              onStatusChange={(newStatus) => updatePanelStatus(panel.id, newStatus)}
+              onToggleMaximize={() => toggleMaximizePanel(panel.id)}
+              onClose={() => removePanel(panel.id)}
+            />
 
-                {/* Título do Terminal */}
-                <span className="text-[12px] font-medium tracking-tight truncate">
-                  {panel.title}
-                </span>
-
-                {/* Badge do Agente */}
-                {panel.agentId && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/25 font-mono shrink-0">
-                    {panel.agentId}
-                  </span>
-                )}
-              </div>
-
-              {/* Ações do Cabeçalho */}
-              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                {/* Botão de Maximizar / Restaurar (alvo tátil >= 44x44px) */}
-                <button
-                  type="button"
-                  onClick={() => toggleMaximizePanel(panel.id)}
-                  title={
-                    isThisMaximized
-                      ? 'Restaurar tamanho (⌘↵)'
-                      : 'Maximizar painel (⌘↵)'
-                  }
-                  aria-label={
-                    isThisMaximized
-                      ? 'Restaurar tamanho do painel'
-                      : 'Maximizar painel'
-                  }
-                  className="min-w-[44px] min-h-[44px] flex items-center justify-center text-white/60 hover:text-white rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
-                >
-                  {isThisMaximized ? (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 9L4 4m0 0h4m-4 0v4m6 6l5 5m0 0h-4m4 0v-4M9 15l-5 5m0 0h4m-4 0v-4m11-6l5-5m0 0h-4m4 0v4"
-                      />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                      />
-                    </svg>
-                  )}
-                </button>
-
-                {/* Botão de Fechar Painel (alvo tátil >= 44x44px) */}
-                <button
-                  type="button"
-                  onClick={() => removePanel(panel.id)}
-                  title="Fechar painel"
-                  aria-label="Fechar painel"
-                  className="min-w-[44px] min-h-[44px] flex items-center justify-center text-white/60 hover:text-red-400 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </header>
-
-            {/* Contentor do Terminal Vivo (@xterm) */}
+            {/* Contentor do Terminal Vivo (@xterm) com Preservação de DOM */}
             <div className="flex-1 min-h-0 w-full relative">
               <XTermWrapper
                 sessionId={panel.sessionId}

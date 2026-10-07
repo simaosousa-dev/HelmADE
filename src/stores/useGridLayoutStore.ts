@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import type { TerminalPanelColor, TerminalStatus, AgentRoleType } from '../types/terminal';
 
 export type GridLayoutType = '1x1' | '1x2' | '2x2' | '2x3' | '3x3' | '4x4';
 
@@ -7,6 +8,9 @@ export interface GridPanelConfig {
   sessionId: string;
   title: string;
   agentId?: string;
+  agentRole?: AgentRoleType | string;
+  color?: TerminalPanelColor;
+  status?: TerminalStatus;
 }
 
 export interface GridLayoutState {
@@ -129,6 +133,46 @@ export const gridLayoutStore = {
     emitChange();
   },
 
+  updatePanelTitle(id: string, title: string): void {
+    const panel = state.panels.find((p) => p.id === id);
+    if (!panel || panel.title === title) return;
+    state = {
+      ...state,
+      panels: state.panels.map((p) => (p.id === id ? { ...p, title } : p)),
+    };
+    emitChange();
+  },
+
+  updatePanelColor(id: string, color: TerminalPanelColor): void {
+    const panel = state.panels.find((p) => p.id === id);
+    if (!panel || panel.color === color) return;
+    state = {
+      ...state,
+      panels: state.panels.map((p) => (p.id === id ? { ...p, color } : p)),
+    };
+    emitChange();
+  },
+
+  updatePanelStatus(id: string, status: TerminalStatus): void {
+    const panel = state.panels.find((p) => p.id === id);
+    if (!panel || panel.status === status) return;
+    state = {
+      ...state,
+      panels: state.panels.map((p) => (p.id === id ? { ...p, status } : p)),
+    };
+    emitChange();
+  },
+
+  updatePanel(id: string, updates: Partial<GridPanelConfig>): void {
+    const panel = state.panels.find((p) => p.id === id);
+    if (!panel) return;
+    state = {
+      ...state,
+      panels: state.panels.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+    };
+    emitChange();
+  },
+
   setPanels(panels: GridPanelConfig[]): void {
     const activeExists = state.activePanelId ? panels.some((p) => p.id === state.activePanelId) : false;
     const maxExists = state.maximizedPanelId ? panels.some((p) => p.id === state.maximizedPanelId) : false;
@@ -191,6 +235,10 @@ export function useGridLayoutStore() {
     toggleMaximizePanel: gridLayoutStore.toggleMaximizePanel,
     addPanel: gridLayoutStore.addPanel,
     removePanel: gridLayoutStore.removePanel,
+    updatePanelTitle: gridLayoutStore.updatePanelTitle,
+    updatePanelColor: gridLayoutStore.updatePanelColor,
+    updatePanelStatus: gridLayoutStore.updatePanelStatus,
+    updatePanel: gridLayoutStore.updatePanel,
     setPanels: gridLayoutStore.setPanels,
     cycleNextPanel: gridLayoutStore.cycleNextPanel,
     cyclePrevPanel: gridLayoutStore.cyclePrevPanel,
