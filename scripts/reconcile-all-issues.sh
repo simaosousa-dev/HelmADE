@@ -273,11 +273,11 @@ Desenvolver o ecrã de revisão de alterações de uma grelha terminada, apresen
   "✅ **Implementada**: Visualizador de Git Diff com Apple HIG, hook useGitDiff, comandos Rust de diff e fusão segura com deteção e abortamento automático de conflitos."
 
 # ------------------------------------------------------------------------------
-# FASE 2: GRELHA TILED & PTY MULTIPLEXER (PENDENTES / TOPO DA FILA)
+# FASE 2: GRELHA TILED & PTY MULTIPLEXER (TASK 2.1 CONCLUÍDA)
 # ------------------------------------------------------------------------------
 sync_task "Task 2.1" \
   "Task 2.1: Motor PTY Multiplexer em Rust com Buffer Circular (Módulo 3)" \
-  "false" \
+  "true" \
   "phase:2-grid-pty,priority:p0-critical,agent:fullstack" \
   "### Objetivo
 Implementar em Rust com \`portable-pty\` a criação de processos shell locais (zsh/bash), canais assíncronos bidirecionais (PTY write/read) e um ring-buffer de scrollback em memória (100.000 linhas) por sessão, emitindo eventos IPC para o frontend com alta eficiência.
@@ -289,7 +289,8 @@ Implementar em Rust com \`portable-pty\` a criação de processos shell locais (
 - \`src-tauri/src/commands/terminal.rs\`
 
 ### Commit Checkpoint
-\`feat(pty): build high-throughput pty multiplexer and ring buffer in rust\`" ""
+\`feat(pty): build high-throughput pty multiplexer and ring buffer in rust\`" \
+  "✅ **Implementada**: Motor PTY em Rust com portable-pty, ring-buffer circular de 100.000 linhas, threads assíncronas de leitura com eventos Tauri IPC (pty-output-<id>) e testes de concorrência com 16 sessões paralelas."
 
 sync_task "Task 2.2" \
   "Task 2.2: Integração do @xterm/xterm com WebGL e Renderização Rápida (Módulo 3)" \
@@ -309,7 +310,7 @@ Integrar no React o componente de terminal baseado em \`@xterm/xterm\` e \`@xter
 echo ""
 echo "=============================================================================="
 echo "🎉 RECONCILIAÇÃO CONCLUÍDA COM SUCESSO!"
-echo "- Fase 0 & Fase 1 (Tasks 0.1 a 1.6): 100% Concluídas e Fechadas com evidências."
-echo "- Task 2.1: Configurada como a próxima tarefa aberta no topo da fila (Fase 2: Grelha Tiled & PTY)."
+echo "- Fase 0 & Fase 1 (Tasks 0.1 a 1.6) + Task 2.1: 100% Concluídas e Fechadas com evidências."
+echo "- Task 2.2: Configurada como a próxima tarefa aberta no topo da fila (Integração @xterm/xterm)."
 echo "- Backlog subsequente: Sincronizado e etiquetado."
 echo "=============================================================================="

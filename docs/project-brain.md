@@ -73,4 +73,5 @@
 * ✅ **Task 1.6**: Interface de Revisão e Fusão Segura (Diff & Merge View) (`feat(ui)`)
 * ✅ **Task 2.1**: Motor PTY Multiplexer em Rust com Buffer Circular (`feat(pty)`)
 * ✅ **Task 2.2**: Integração do `@xterm/xterm` com WebGL e Renderização Rápida (`feat(terminal)`)
-* ⏳ **Próxima Tarefa em Fila**: **Task 2.3: Layouts de Grelha Tiled (1x1 a 4x4) e Zoom/Maximizar em 1 Toque (Módulo 3)**
+* ✅ **Task 2.3**: Layouts de Grelha Tiled (1x1 a 4x4) e Zoom/Maximizar em 1 Toque (`feat(grid)`)
+* ⏳ **Próxima Tarefa em Fila**: **Task 2.4: Cabeçalhos Semânticos, Badges de Cor e Indicadores de Estado (Módulo 3)**
