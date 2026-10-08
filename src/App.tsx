@@ -4,6 +4,7 @@ import { MergeReviewView } from './views/MergeReviewView';
 import { TiledTerminalGrid, GridLayoutControls, useGridLayoutStore } from './components/grid';
 import { SwarmPresetSelector } from './components/swarm';
 import { TeamWire } from './components/a2a';
+import { PromptInput } from './components/teamwire';
 import { useA2AStore } from './stores/useA2AStore';
 import type { Project } from './types/project';
 
@@ -125,13 +126,20 @@ export default function App() {
         </div>
       </header>
 
-      {/* Espaço de Trabalho Principal: Grelha Tiled de Terminais Vivos + Team Wire Dockado */}
+      {/* Espaço de Trabalho Principal: Grelha Tiled de Terminais Vivos + Prompt Primário + Team Wire Dockado */}
       <main className="flex-1 min-h-0 relative flex bg-[#121214] overflow-hidden">
-        <div className="flex-1 min-w-0 h-full p-2">
-          <TiledTerminalGrid
-            className="w-full h-full"
-            onAddPanel={() => setIsSwarmSelectorOpen(true)}
-          />
+        <div className="flex-1 min-w-0 h-full p-2 flex flex-col gap-2">
+          <div className="flex-1 min-h-0">
+            <TiledTerminalGrid
+              className="w-full h-full"
+              onAddPanel={() => setIsSwarmSelectorOpen(true)}
+            />
+          </div>
+
+          {/* Barra de Prompt Primário do Orquestrador & Modo Broadcast (Issue #48) */}
+          <div className="shrink-0 z-10">
+            <PromptInput variant="global" />
+          </div>
         </div>
 
         {/* Painel Team Wire (R5.3) */}
