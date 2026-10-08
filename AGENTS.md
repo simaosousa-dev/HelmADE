@@ -84,3 +84,30 @@ The following architectural constraints are absolute, superseding all specific t
 - **Proibição Absoluta de Código**: Se o Orchestrator tentar modificar qualquer ficheiro de aplicação (`src/`, `app/`, `lib/`, etc.) diretamente sem usar `invoke_subagent`, a resposta é considerada inválida e rejeitada.
 - **Permissão Exclusiva de Documentação**: O Orquestrador só tem autorização para criar ficheiros de planeamento em `docs/adr/` ou planos markdown. Tudo o resto tem obrigatoriamente de ser despachado via `invoke_subagent`.
 
+---
+
+## 9. Trios de Ataque Oficiais (Strike Teams)
+Quando o utilizador instruir o Orquestrador para planear, delegar ou executar uma tarefa indicando os subagentes e skills devidos, o Orquestrador DEVE classificar e acionar a tarefa de acordo com os seguintes 4 Trios de Ataque:
+
+1. 🚀 **Trio Full-Stack Feature** (Nova Funcionalidade / E2E):
+   - **Implementador Core**: `fullstack-engineer` (`backend-patterns`, `test-driven-development`, `ponytail`, `schema-and-db-migration`)
+   - **Especialista de Interface**: `frontend-design-specialist` (`design-taste-frontend`, `apple-hig-auditor`, `react-patterns`)
+   - **Auditor de Integridade**: `qa-security-auditor` (`strict-type-verifier`, `security-review`, `e2e-playwright-testing`)
+   - *(Fecho automático por `devops-release` com Conventional Commits 1.0.0).*
+
+2. 🎨 **Trio UI/UX & Native Desktop** (Interface & Experiência):
+   - **Implementador UI**: `frontend-design-specialist` (`design-taste-frontend`, `design-system-catalog`, `apple-hig-auditor`)
+   - **Auditor de Qualidade**: `qa-security-auditor` (`strict-type-verifier`, `e2e-playwright-testing`)
+   - **Finalizador de Versão**: `devops-release` (`semantic-git-workflow`, `finishing-a-development-branch`)
+
+3. ⚡ **Trio Hotfix, Build & Estabilidade** (Correção Cirúrgica):
+   - **Cirurgião Rápido**: `build-error-resolver` (`strict-type-verifier`, `systematic-debugging`)
+   - **Auditor Forense**: `qa-security-auditor` (`error-handling`, `security-review`)
+   - **Finalizador de Versão**: `devops-release` (`semantic-git-workflow`)
+
+4. 🏛️ **Trio Arquitetura, Performance & Dívida Técnica** (Refactor & Systems):
+   - **Arquiteto de Sistemas**: `system-architect` (`architectural-decision-record`, `api-design-openapi`, `hexagonal-architecture`)
+   - **Engenheiro de Performance & SRE**: `performance-sre-engineer` (`performance-profiling-benchmark`, `latency-critical-systems`)
+   - **Auditor de Código**: `qa-security-auditor` (`ponytail-review`, `ponytail-debt`, `security-scan`)
+
+

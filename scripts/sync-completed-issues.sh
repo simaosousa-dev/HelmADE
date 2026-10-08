@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "=== [1/2] Sincronizar criação de Issues se necessário ==="
-bash scripts/sync-roadmap-issues.sh || true
+python3 scripts/reconcile-strike-teams-backlog.py || true
 
 echo ""
 echo "=== [2/2] Atualizar estado das Tasks concluídas ==="
@@ -24,7 +24,8 @@ bash scripts/update-issue-status.sh "Task 1.5" "closed" "✅ Concluído: Alocado
 bash scripts/update-issue-status.sh "Task 1.6" "closed" "✅ Concluído: Interface de revisão de Git Diff, visualizador com Apple HIG e modal de fusão segura (Squash & Rebase)." || true
 bash scripts/update-issue-status.sh "Task 2.1" "closed" "✅ Concluído: Motor PTY multiplexer em Rust com portable-pty, ring-buffer circular de 100.000 linhas, eventos IPC e serviço TypeScript." || true
 bash scripts/update-issue-status.sh "Task 2.2" "closed" "✅ Concluído: Integração do @xterm/xterm com WebGL, FitAddon, temas Apple HIG e hook useTerminalSession." || true
-bash scripts/update-issue-status.sh "Task 2.3" "closed" "✅ Concluído: Layouts de grelha CSS Grid (1x1 a 4x4), atalho Cmd+Enter para zoom/maximização instantânea e preservação estrita de DOM e instâncias PTY." || true
+bash scripts/update-issue-status.sh "Task 2.3" "closed" "✅ Concluído: Layouts de grelha CSS Grid (1x1 a 4x4), atalho Cmd+Enter para zoom/maximização instantânea e preservação estrita de DOM e instâncias PTY (commit 06cfa1e)." || true
+bash scripts/update-issue-status.sh "Task 2.4" "closed" "✅ Concluído: Cabeçalhos semânticos de terminais, badges de cor e indicadores de estado reactivos (commit e9202d9)." || true
 
 echo ""
 echo "🎉 Sincronização e atualização de Issues no GitHub concluída!"
