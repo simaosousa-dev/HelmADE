@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { SwarmPreset, PresetPanelConfig } from '../../config/swarmPresets';
 import {
-  type AIModelDefinition,
   type CognitiveProfileId,
   COGNITIVE_PROFILES,
   getAllModels,
