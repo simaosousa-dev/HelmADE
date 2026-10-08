@@ -1,13 +1,38 @@
 import { useSyncExternalStore } from 'react';
-import type { DetectedDevServer, PreviewState } from '../types/preview';
+import type {
+  ConsoleLogEntry,
+  ConsoleLogLevel,
+  DetectedDevServer,
+  PreviewState,
+  ViewportMode,
+} from '../types/preview';
+import { sanitizeLogMessage } from '../utils/sanitizeLog.ts';
 
-let state: PreviewState = {
+const DEFAULT_URL = 'http://localhost:5173';
+
+const initialPreviewState: PreviewState = {
   isOpen: false,
   servers: [],
   activeServer: null,
-  currentUrl: 'http://localhost:5173',
+  currentUrl: DEFAULT_URL,
   isLoading: false,
+
+  // Histórico de navegação
+  history: [DEFAULT_URL],
+  historyIndex: 0,
+  canGoBack: false,
+  canGoForward: false,
+
+  // Viewport responsivo
+  viewportMode: 'desktop',
+
+  // Consola de erros e logs
+  logs: [],
+  isConsoleOpen: false,
+  consoleFilter: 'all',
 };
+
+let state: PreviewState = { ...initialPreviewState };
 
 const listeners = new Set<() => void>();
 
@@ -52,34 +77,195 @@ export const previewStore = {
 
     const shouldActivate = !state.activeServer || state.servers.length === 0;
 
+    let updatedHistory = state.history;
+    let updatedHistoryIndex = state.historyIndex;
+    let updatedCanGoBack = state.canGoBack;
+    let updatedCanGoForward = state.canGoForward;
+
+    if (shouldActivate) {
+      updatedHistory = [server.url];
+      updatedHistoryIndex = 0;
+      updatedCanGoBack = false;
+      updatedCanGoForward = false;
+    }
+
     state = {
       ...state,
       servers: updatedServers,
       activeServer: shouldActivate ? server : state.activeServer,
       currentUrl: shouldActivate ? server.url : state.currentUrl,
       isOpen: shouldActivate ? true : state.isOpen,
+      history: updatedHistory,
+      historyIndex: updatedHistoryIndex,
+      canGoBack: updatedCanGoBack,
+      canGoForward: updatedCanGoForward,
     };
     emitChange();
   },
 
   setActiveServer(server: DetectedDevServer | null): void {
+    const targetUrl = server ? server.url : state.currentUrl;
+    let updatedHistory = state.history;
+    let updatedHistoryIndex = state.historyIndex;
+
+    if (server && targetUrl !== state.currentUrl) {
+      const sliced = state.history.slice(0, state.historyIndex + 1);
+      updatedHistory = [...sliced, targetUrl];
+      updatedHistoryIndex = updatedHistory.length - 1;
+    }
+
     state = {
       ...state,
       activeServer: server,
-      currentUrl: server ? server.url : state.currentUrl,
+      currentUrl: targetUrl,
+      history: updatedHistory,
+      historyIndex: updatedHistoryIndex,
+      canGoBack: updatedHistoryIndex > 0,
+      canGoForward: false,
     };
     emitChange();
   },
 
   setCurrentUrl(url: string): void {
     if (state.currentUrl === url) return;
-    state = { ...state, currentUrl: url };
+    const sliced = state.history.slice(0, state.historyIndex + 1);
+    const newHistory = [...sliced, url];
+    const newIndex = newHistory.length - 1;
+
+    state = {
+      ...state,
+      currentUrl: url,
+      history: newHistory,
+      historyIndex: newIndex,
+      canGoBack: newIndex > 0,
+      canGoForward: false,
+    };
     emitChange();
+  },
+
+  navigateTo(url: string): void {
+    let target = url.trim();
+    if (!target) return;
+    if (!/^https?:\/\//i.test(target)) {
+      target = `http://${target}`;
+    }
+    this.setCurrentUrl(target);
+  },
+
+  goBack(): void {
+    if (state.historyIndex > 0) {
+      const newIndex = state.historyIndex - 1;
+      const targetUrl = state.history[newIndex];
+      state = {
+        ...state,
+        currentUrl: targetUrl,
+        historyIndex: newIndex,
+        canGoBack: newIndex > 0,
+        canGoForward: true,
+      };
+      emitChange();
+    }
+  },
+
+  goForward(): void {
+    if (state.historyIndex < state.history.length - 1) {
+      const newIndex = state.historyIndex + 1;
+      const targetUrl = state.history[newIndex];
+      state = {
+        ...state,
+        currentUrl: targetUrl,
+        historyIndex: newIndex,
+        canGoBack: true,
+        canGoForward: newIndex < state.history.length - 1,
+      };
+      emitChange();
+    }
   },
 
   setLoading(isLoading: boolean): void {
     if (state.isLoading === isLoading) return;
     state = { ...state, isLoading };
+    emitChange();
+  },
+
+  setViewportMode(viewportMode: ViewportMode): void {
+    if (state.viewportMode === viewportMode) return;
+    state = { ...state, viewportMode };
+    emitChange();
+  },
+
+  addLog(entry: {
+    level?: ConsoleLogLevel;
+    message: string;
+    source?: string;
+    stack?: string;
+  }): void {
+    const level: ConsoleLogLevel = entry.level || 'log';
+    const sanitizedMessage = sanitizeLogMessage(entry.message || '');
+    const sanitizedStack = entry.stack ? sanitizeLogMessage(entry.stack) : undefined;
+
+    const lastLog = state.logs[state.logs.length - 1];
+    let updatedLogs: ConsoleLogEntry[];
+
+    // Agrupa mensagens repetidas consecutivas com count incrementado
+    if (
+      lastLog &&
+      lastLog.level === level &&
+      lastLog.message === sanitizedMessage &&
+      lastLog.source === entry.source
+    ) {
+      const updatedLast: ConsoleLogEntry = {
+        ...lastLog,
+        count: (lastLog.count || 1) + 1,
+        timestamp: Date.now(),
+      };
+      updatedLogs = [...state.logs.slice(0, -1), updatedLast];
+    } else {
+      const newEntry: ConsoleLogEntry = {
+        id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        level,
+        message: sanitizedMessage,
+        timestamp: Date.now(),
+        source: entry.source,
+        stack: sanitizedStack,
+        count: 1,
+      };
+      // Limite máximo de 200 logs para evitar consumo excessivo de memória
+      updatedLogs =
+        state.logs.length >= 200
+          ? [...state.logs.slice(state.logs.length - 199), newEntry]
+          : [...state.logs, newEntry];
+    }
+
+    state = {
+      ...state,
+      logs: updatedLogs,
+    };
+    emitChange();
+  },
+
+  clearLogs(): void {
+    if (state.logs.length === 0) return;
+    state = { ...state, logs: [] };
+    emitChange();
+  },
+
+  toggleConsole(isOpen?: boolean): void {
+    const nextVal = isOpen !== undefined ? isOpen : !state.isConsoleOpen;
+    if (state.isConsoleOpen === nextVal) return;
+    state = { ...state, isConsoleOpen: nextVal };
+    emitChange();
+  },
+
+  setConsoleOpen(isConsoleOpen: boolean): void {
+    if (state.isConsoleOpen === isConsoleOpen) return;
+    state = { ...state, isConsoleOpen };
+    emitChange();
+  },
+
+  setConsoleFilter(consoleFilter: 'all' | ConsoleLogLevel): void {
+    if (state.consoleFilter === consoleFilter) return;
+    state = { ...state, consoleFilter };
     emitChange();
   },
 
@@ -108,8 +294,16 @@ export const previewStore = {
       isOpen: false,
       servers: [],
       activeServer: null,
-      currentUrl: 'http://localhost:5173',
+      currentUrl: DEFAULT_URL,
       isLoading: false,
+      history: [DEFAULT_URL],
+      historyIndex: 0,
+      canGoBack: false,
+      canGoForward: false,
+      viewportMode: 'desktop',
+      logs: [],
+      isConsoleOpen: false,
+      consoleFilter: 'all',
     };
     emitChange();
   },
@@ -125,7 +319,16 @@ export function usePreviewStore() {
     addServer: previewStore.addServer,
     setActiveServer: previewStore.setActiveServer,
     setCurrentUrl: previewStore.setCurrentUrl,
+    navigateTo: previewStore.navigateTo.bind(previewStore),
+    goBack: previewStore.goBack.bind(previewStore),
+    goForward: previewStore.goForward.bind(previewStore),
     setLoading: previewStore.setLoading,
+    setViewportMode: previewStore.setViewportMode,
+    addLog: previewStore.addLog,
+    clearLogs: previewStore.clearLogs,
+    toggleConsole: previewStore.toggleConsole,
+    setConsoleOpen: previewStore.setConsoleOpen,
+    setConsoleFilter: previewStore.setConsoleFilter,
     clearServers: previewStore.clearServers,
     reset: previewStore.reset,
   };
