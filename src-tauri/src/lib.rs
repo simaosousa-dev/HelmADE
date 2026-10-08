@@ -5,6 +5,7 @@ pub mod git;
 pub mod network;
 pub mod terminal;
 
+use agents::router::{MessageRouter, MessageRouterState};
 use commands::network::PortState;
 use commands::terminal::PtyState;
 use db::DbState;
@@ -36,11 +37,13 @@ pub fn run() {
         .expect("falha crítica ao inicializar a base de dados SQLite local");
     let port_state = PortState::default();
     let pty_state: PtyState = Arc::new(PtyManager::new());
+    let router_state: MessageRouterState = Arc::new(MessageRouter::new());
 
     tauri::Builder::default()
         .manage(db_state)
         .manage(port_state)
         .manage(pty_state)
+        .manage(router_state)
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             // Comandos de Projetos & SQLite
@@ -71,6 +74,11 @@ pub fn run() {
             // Comandos de Personas de Agentes (.md)
             commands::agents::list_discovered_agents,
             commands::agents::get_agent_details,
+            // Comandos do Protocolo A2A Inter-Agentes
+            commands::message::send_a2a_message,
+            commands::message::get_a2a_history,
+            commands::message::register_a2a_pty_mirror,
+            commands::message::unregister_a2a_pty_mirror,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

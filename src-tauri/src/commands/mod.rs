@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod message;
 pub mod network;
 pub mod project;
 pub mod symlink;
