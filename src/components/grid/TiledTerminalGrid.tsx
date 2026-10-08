@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { XTermWrapper, TerminalHeader } from '../terminal';
 import {
   useGridLayoutStore,
@@ -6,6 +6,7 @@ import {
   getLayoutDimensions,
   type GridLayoutType,
 } from '../../stores/useGridLayoutStore';
+import { useA2AStore } from '../../stores/useA2AStore';
 import type { TerminalPanelColor } from '../../types/terminal';
 
 export interface TiledTerminalGridProps {
@@ -54,6 +55,10 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
     updatePanelColor,
     updatePanelStatus,
   } = useGridLayoutStore();
+  const { activeExchangeAgentIds } = useA2AStore();
+
+  const [highlightedPanelId, setHighlightedPanelId] = useState<string | null>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isMaximized = maximizedPanelId !== null && panels.some((p) => p.id === maximizedPanelId);
   const { maxPanels } = getLayoutDimensions(layout);
@@ -65,6 +70,41 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
     }, 60);
     return () => clearTimeout(timer);
   }, [layout, maximizedPanelId]);
+
+  // Escuta de eventos para destacar e focar painel emitidos pelo TeamWire
+  useEffect(() => {
+    const handleHighlight = (e: Event) => {
+      const customEvent = e as CustomEvent<{ panelId?: string }>;
+      const panelId = customEvent.detail?.panelId;
+      if (!panelId) return;
+
+      const currentPanels = gridLayoutStore.getState().panels;
+      const found = currentPanels.find(
+        (p) => p.agentId === panelId || p.id === panelId
+      );
+
+      if (found) {
+        setActivePanelId(found.id);
+        setHighlightedPanelId(found.id);
+
+        if (highlightTimeoutRef.current) {
+          clearTimeout(highlightTimeoutRef.current);
+        }
+        highlightTimeoutRef.current = setTimeout(() => {
+          setHighlightedPanelId(null);
+          highlightTimeoutRef.current = null;
+        }, 1500);
+      }
+    };
+
+    window.addEventListener('helmade:highlightPanel', handleHighlight);
+    return () => {
+      window.removeEventListener('helmade:highlightPanel', handleHighlight);
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, [setActivePanelId]);
 
   // Gestor global de atalhos de teclado Apple HIG com fase de captura
   useEffect(() => {
@@ -166,6 +206,10 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
         const isVisibleInGrid = !isMaximized && index < maxPanels;
         const isVisible = isThisMaximized || isVisibleInGrid;
         const isActive = activePanelId === panel.id;
+        const isHighlighted = panel.id === highlightedPanelId;
+        const isA2AActive =
+          (panel.agentId && activeExchangeAgentIds.has(panel.agentId)) ||
+          activeExchangeAgentIds.has(panel.id);
         const panelColor = panel.color ?? 'blue';
         const activeBorderClass = PANEL_ACTIVE_BORDER_CLASSES[panelColor] ?? PANEL_ACTIVE_BORDER_CLASSES.blue;
 
@@ -180,7 +224,9 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
                 ? 'absolute inset-2 z-20 shadow-2xl'
                 : 'w-full h-full'
             } ${
-              isActive
+              isHighlighted
+                ? 'ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.35)] duration-300 border-cyan-400/80 z-10'
+                : isActive
                 ? activeBorderClass
                 : 'border-white/10 hover:border-white/20'
             }`}
@@ -194,6 +240,7 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
               agentRole={panel.agentRole}
               color={panel.color}
               status={panel.status}
+              isA2AActive={isA2AActive}
               isActive={isActive}
               isMaximized={isThisMaximized}
               onTitleChange={(newTitle) => updatePanelTitle(panel.id, newTitle)}

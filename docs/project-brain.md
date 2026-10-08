@@ -78,4 +78,5 @@
 * ✅ **Task 3.1**: Descoberta e Leitura de Personas `.md` no Sistema (Módulo 4) (`feat(agents)`)
 * ✅ **Task 3.2**: Modelos de Enxame com 1 Clique (*Swarm Presets*) & Injeção de Contexto (Módulo 4) (`feat(swarm)`)
 * ✅ **Task 3.3**: Protocolo de Troca de Mensagens Inter-Agentes A2A & Espelhamento (Módulo 5) (`feat(a2a)`)
-* ⏳ **Próxima Tarefa em Fila**: **Task 3.4: Painel Lateral "Team Wire" (Feed de Chat dos IAs) (Módulo 5)**
+* ✅ **Task 3.4**: Painel Lateral "Team Wire" (Feed de Chat dos IAs) (Módulo 5) (`feat(ui)`)
+* ⏳ **Próxima Tarefa em Fila**: **Task 3.5: Caixa de Prompt Primário do Orquestrador & Modo Broadcast (Módulo 5)**

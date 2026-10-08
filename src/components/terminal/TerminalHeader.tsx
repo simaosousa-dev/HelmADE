@@ -10,6 +10,7 @@ import {
   TerminalColorBadge,
   COLOR_CONFIGS,
 } from './TerminalStatusBadge';
+import { A2AExchangeIndicator } from '../a2a/A2AExchangeIndicator';
 
 export interface TerminalHeaderProps {
   id: string;
@@ -19,6 +20,7 @@ export interface TerminalHeaderProps {
   agentRole?: AgentRoleType | string;
   color?: TerminalPanelColor;
   status?: TerminalStatus;
+  isA2AActive?: boolean;
   isActive?: boolean;
   isMaximized?: boolean;
   onTitleChange?: (newTitle: string) => void;
@@ -158,6 +160,7 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
   agentRole,
   color = 'blue',
   status = 'idle',
+  isA2AActive = false,
   isActive = false,
   isMaximized = false,
   onTitleChange,
@@ -381,6 +384,13 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
             </div>
           )}
         </div>
+
+        {/* Indicador de Troca Inter-Agentes A2A */}
+        {isA2AActive && (
+          <div className="shrink-0" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+            <A2AExchangeIndicator isExchanging={true} agentName={title} size="sm" />
+          </div>
+        )}
 
         {/* Distintivo de Estado Reativo (Apple HIG) */}
         <div className="shrink-0" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>

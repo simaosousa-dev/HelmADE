@@ -1,15 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { WelcomeView } from './views/WelcomeView';
 import { MergeReviewView } from './views/MergeReviewView';
 import { TiledTerminalGrid, GridLayoutControls, useGridLayoutStore } from './components/grid';
 import { SwarmPresetSelector } from './components/swarm';
+import { TeamWire } from './components/a2a';
+import { useA2AStore } from './stores/useA2AStore';
 import type { Project } from './types/project';
 
 export default function App() {
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [reviewingSwarmId, setReviewingSwarmId] = useState<string | null>(null);
   const [isSwarmSelectorOpen, setIsSwarmSelectorOpen] = useState(false);
-  const { panels } = useGridLayoutStore();
+  const { panels, setActivePanelId } = useGridLayoutStore();
+  const { isWireOpen, toggleWire, setPeers } = useA2AStore();
+
+  // Sincronizar pares (peers) do enxame com base nos painéis ativos da grelha
+  useEffect(() => {
+    const peers = panels.map((p) => ({
+      id: p.agentId || p.id,
+      name: p.title,
+      role: p.agentRole,
+      status: p.status,
+      sessionId: p.sessionId,
+    }));
+    setPeers(peers);
+  }, [panels, setPeers]);
 
   if (!activeProject) {
     return <WelcomeView onOpenProject={(proj) => setActiveProject(proj)} />;
@@ -41,6 +56,29 @@ export default function App() {
 
         {/* Ações Rápidas do Cockpit (Direita) */}
         <div className="flex items-center gap-2">
+          {/* Botão de Alternância do Team Wire */}
+          <button
+            type="button"
+            onClick={() => toggleWire()}
+            className={`min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-xl text-[12px] font-semibold border shadow-sm transition-all flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none ${
+              isWireOpen
+                ? 'bg-cyan-600/30 border-cyan-400/50 text-cyan-200'
+                : 'bg-white/[0.05] hover:bg-white/10 text-white/85 border-white/10 hover:border-white/20'
+            }`}
+            title="Alternar painel Team Wire de comunicação inter-agentes"
+            aria-pressed={isWireOpen}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+            <span>Team Wire</span>
+          </button>
+
           {/* Botão de Lançamento de Modelos de Enxame (1 Clique) */}
           <button
             type="button"
@@ -87,12 +125,31 @@ export default function App() {
         </div>
       </header>
 
-      {/* Espaço de Trabalho Principal: Grelha Tiled de Terminais Vivos */}
-      <main className="flex-1 min-h-0 relative p-2 bg-[#121214]">
-        <TiledTerminalGrid
-          className="w-full h-full"
-          onAddPanel={() => setIsSwarmSelectorOpen(true)}
-        />
+      {/* Espaço de Trabalho Principal: Grelha Tiled de Terminais Vivos + Team Wire Dockado */}
+      <main className="flex-1 min-h-0 relative flex bg-[#121214] overflow-hidden">
+        <div className="flex-1 min-w-0 h-full p-2">
+          <TiledTerminalGrid
+            className="w-full h-full"
+            onAddPanel={() => setIsSwarmSelectorOpen(true)}
+          />
+        </div>
+
+        {/* Painel Team Wire (R5.3) */}
+        {isWireOpen && (
+          <div className="w-80 sm:w-96 h-full shrink-0 z-10 animate-in slide-in-from-right duration-200">
+            <TeamWire
+              className="w-full h-full"
+              onFocusAgent={(agentId) => {
+                const targetPanel = panels.find(
+                  (p) => p.agentId === agentId || p.id === agentId
+                );
+                if (targetPanel) {
+                  setActivePanelId(targetPanel.id);
+                }
+              }}
+            />
+          </div>
+        )}
       </main>
 
       {/* Seletor Modal de Modelos de Enxame (Swarm Presets) */}

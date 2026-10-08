@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  SWARM_PRESETS,
   type SwarmPreset,
   type PresetPanelConfig,
 } from '../../config/swarmPresets';
