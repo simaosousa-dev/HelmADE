@@ -75,4 +75,5 @@
 * ✅ **Task 2.2**: Integração do `@xterm/xterm` com WebGL e Renderização Rápida (`feat(terminal)`)
 * ✅ **Task 2.3**: Layouts de Grelha Tiled (1x1 a 4x4) e Zoom/Maximizar em 1 Toque (`feat(grid)`)
 * ✅ **Task 2.4**: Cabeçalhos Semânticos, Badges de Cor e Indicadores de Estado (`feat(terminal)`)
-* ⏳ **Próxima Tarefa em Fila**: **Task 3.1: Descoberta e Leitura de Personas `.md` no Sistema (Módulo 4)**
+* ✅ **Task 3.1**: Descoberta e Leitura de Personas `.md` no Sistema (Módulo 4) (`feat(agents)`)
+* ⏳ **Próxima Tarefa em Fila**: **Task 3.2: Modelos de Enxame com 1 Clique (*Swarm Presets*) & Injeção de Contexto (Módulo 4)**

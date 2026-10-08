@@ -1,3 +1,4 @@
+pub mod agents;
 pub mod commands;
 pub mod db;
 pub mod git;
@@ -67,6 +68,9 @@ pub fn run() {
             commands::terminal::resize_pty,
             commands::terminal::kill_pty,
             commands::terminal::get_pty_scrollback,
+            // Comandos de Personas de Agentes (.md)
+            commands::agents::list_discovered_agents,
+            commands::agents::get_agent_details,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
