@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod browser;
 pub mod commands;
 pub mod db;
 pub mod git;
@@ -6,6 +7,8 @@ pub mod network;
 pub mod terminal;
 
 use agents::router::{MessageRouter, MessageRouterState};
+use browser::PortSniffer;
+use commands::browser::BrowserState;
 use commands::network::PortState;
 use commands::terminal::PtyState;
 use db::DbState;
@@ -36,12 +39,14 @@ pub fn run() {
     let db_state = DbState::new(db_path.to_str().unwrap_or("helmade.db"))
         .expect("falha crítica ao inicializar a base de dados SQLite local");
     let port_state = PortState::default();
+    let browser_state: BrowserState = Arc::new(PortSniffer::new());
     let pty_state: PtyState = Arc::new(PtyManager::new());
     let router_state: MessageRouterState = Arc::new(MessageRouter::new());
 
     tauri::Builder::default()
         .manage(db_state)
         .manage(port_state)
+        .manage(browser_state)
         .manage(pty_state)
         .manage(router_state)
         .plugin(tauri_plugin_dialog::init())
@@ -80,6 +85,10 @@ pub fn run() {
             commands::message::get_a2a_history,
             commands::message::register_a2a_pty_mirror,
             commands::message::unregister_a2a_pty_mirror,
+            // Comandos de Live Preview & Sniffer de Dev Servers
+            commands::browser::get_detected_servers,
+            commands::browser::clear_detected_servers,
+            commands::browser::open_in_external_browser,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -24,9 +24,7 @@ impl RingBuffer {
     /// Adiciona um fragmento de texto bruto (chunk) emitido pelo PTY.
     /// Divide o texto por novas linhas (\n), preservando linhas parciais no buffer pendente.
     pub fn push_chunk(&mut self, chunk: &str) {
-        let mut chars = chunk.chars().peekable();
-
-        while let Some(ch) = chars.next() {
+        for ch in chunk.chars() {
             if ch == '\n' {
                 // Finaliza a linha atual, removendo carriage return (\r) se presente
                 let mut finished_line = std::mem::take(&mut self.pending_line);

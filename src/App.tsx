@@ -5,7 +5,9 @@ import { TiledTerminalGrid, GridLayoutControls, useGridLayoutStore } from './com
 import { SwarmPresetSelector } from './components/swarm';
 import { TeamWire } from './components/a2a';
 import { PromptInput } from './components/teamwire';
+import { LiveBrowserDock } from './components/preview';
 import { useA2AStore } from './stores/useA2AStore';
+import { useAutoPortDetection } from './hooks/useAutoPortDetection';
 import type { Project } from './types/project';
 
 export default function App() {
@@ -14,6 +16,11 @@ export default function App() {
   const [isSwarmSelectorOpen, setIsSwarmSelectorOpen] = useState(false);
   const { panels, setActivePanelId } = useGridLayoutStore();
   const { isWireOpen, toggleWire, setPeers } = useA2AStore();
+  const {
+    isOpen: isPreviewOpen,
+    toggleOpen: togglePreview,
+    servers: previewServers,
+  } = useAutoPortDetection();
 
   // Sincronizar pares (peers) do enxame com base nos painéis ativos da grelha
   useEffect(() => {
@@ -57,6 +64,34 @@ export default function App() {
 
         {/* Ações Rápidas do Cockpit (Direita) */}
         <div className="flex items-center gap-2">
+          {/* Botão de Alternância do Live Preview Webview (Issue #50) */}
+          <button
+            type="button"
+            onClick={() => togglePreview()}
+            className={`min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-xl text-[12px] font-semibold border shadow-sm transition-all flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none ${
+              isPreviewOpen
+                ? 'bg-emerald-600/30 border-emerald-400/50 text-emerald-200'
+                : 'bg-white/[0.05] hover:bg-white/10 text-white/85 border-white/10 hover:border-white/20'
+            }`}
+            title="Alternar painel Live Preview dockado de servidores web"
+            aria-pressed={isPreviewOpen}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+              />
+            </svg>
+            <span>Live Preview</span>
+            {previewServers.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/25 border border-emerald-400/30 text-emerald-300">
+                {previewServers.length}
+              </span>
+            )}
+          </button>
+
           {/* Botão de Alternância do Team Wire */}
           <button
             type="button"
@@ -126,7 +161,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Espaço de Trabalho Principal: Grelha Tiled de Terminais Vivos + Prompt Primário + Team Wire Dockado */}
+      {/* Espaço de Trabalho Principal: Grelha Tiled de Terminais Vivos + Prompt Primário + Live Preview Dockada + Team Wire Dockado */}
       <main className="flex-1 min-h-0 relative flex bg-[#121214] overflow-hidden">
         <div className="flex-1 min-w-0 h-full p-2 flex flex-col gap-2">
           <div className="flex-1 min-h-0">
@@ -141,6 +176,13 @@ export default function App() {
             <PromptInput variant="global" />
           </div>
         </div>
+
+        {/* Painel Live Preview Webview Dockado (Issue #50) */}
+        {isPreviewOpen && (
+          <div className="w-96 lg:w-[460px] xl:w-[520px] h-full shrink-0 z-10 animate-in slide-in-from-right duration-200">
+            <LiveBrowserDock className="w-full h-full" />
+          </div>
+        )}
 
         {/* Painel Team Wire (R5.3) */}
         {isWireOpen && (

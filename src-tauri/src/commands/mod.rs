@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod browser;
 pub mod message;
 pub mod network;
 pub mod project;

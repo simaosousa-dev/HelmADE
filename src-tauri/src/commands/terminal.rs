@@ -8,6 +8,7 @@ use crate::terminal::pty::SpawnOptions;
 /// Estado compartilhado do gerenciador de PTYs gerenciado pelo runtime Tauri.
 pub type PtyState = Arc<PtyManager>;
 
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub fn spawn_pty(
     state: State<PtyState>,

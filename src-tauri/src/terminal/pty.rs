@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use super::ring_buffer::RingBuffer;
 
@@ -119,6 +119,23 @@ impl PtySession {
                         // Emite o evento IPC para o frontend via Tauri Event System
                         if let Some(ref handle) = app_handle {
                             let _ = handle.emit(&event_name, &chunk);
+
+                            // Sniffer não-bloqueante de portas e servidores de desenvolvimento
+                            let detected_servers =
+                                crate::browser::PortSniffer::sniff_chunk(&chunk, &reader_session_id);
+                            if !detected_servers.is_empty() {
+                                if let Some(browser_state) =
+                                    handle.try_state::<crate::commands::browser::BrowserState>()
+                                {
+                                    for server in detected_servers {
+                                        if browser_state
+                                            .record_if_new(&reader_session_id, server.clone())
+                                        {
+                                            let _ = handle.emit("devserver-detected", &server);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     Err(err) => {
