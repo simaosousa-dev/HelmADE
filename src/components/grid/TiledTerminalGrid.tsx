@@ -54,6 +54,7 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
     updatePanelTitle,
     updatePanelColor,
     updatePanelStatus,
+    updatePanelModel,
   } = useGridLayoutStore();
   const { activeExchangeAgentIds } = useA2AStore();
 
@@ -240,6 +241,8 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
               agentRole={panel.agentRole}
               color={panel.color}
               status={panel.status}
+              modelId={panel.modelId}
+              onModelChange={(newModelId) => updatePanelModel(panel.id, newModelId)}
               isA2AActive={isA2AActive}
               isActive={isActive}
               isMaximized={isThisMaximized}

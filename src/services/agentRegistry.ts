@@ -45,3 +45,20 @@ export const agentRegistry = new AgentRegistryService();
 export const listAgents = (projectPath?: string) => agentRegistry.listAgents(projectPath);
 export const getAgent = (agentId: string, projectPath?: string) => agentRegistry.getAgent(agentId, projectPath);
 export const clearCache = () => agentRegistry.clearCache();
+
+export interface OllamaStatus {
+  is_running: boolean;
+  endpoint: string;
+  models: string[];
+  message: string | null;
+}
+
+/**
+ * Verifica se a instância local do Ollama está ativa e descobre os modelos instalados.
+ */
+export async function checkOllamaStatus(endpoint?: string): Promise<OllamaStatus> {
+  return invoke<OllamaStatus>('check_ollama_status', {
+    endpoint: endpoint || null,
+  });
+}
+

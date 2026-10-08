@@ -5,8 +5,10 @@ import {
 } from '../../config/swarmPresets';
 import { useSwarmStore } from '../../stores/useSwarmStore';
 import { launchSwarmPreset } from '../../services/swarmLauncher';
+import { agentConfigStore } from '../../stores/useAgentConfigStore';
 import type { TerminalPanelColor, AgentRoleType } from '../../types/terminal';
 import { AGENT_ROLE_MAP } from '../../types/terminal';
+import { AgentModelConfigModal } from './AgentModelConfigModal';
 
 export interface SwarmPresetSelectorProps {
   isOpen: boolean;
@@ -128,6 +130,7 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
   const [selectedPresetId, setSelectedPresetId] = useState<string>(
     activePresetId || presets[0]?.id || 'trio-fullstack'
   );
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   useEffect(() => {
     if (activePresetId) {
@@ -139,21 +142,29 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !isConfigModalOpen) {
         e.preventDefault();
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isConfigModalOpen]);
 
   if (!isOpen) return null;
 
   const currentPreset = presets.find((p) => p.id === selectedPresetId) || presets[0];
 
-  const handleLaunch = async (presetToLaunch: SwarmPreset) => {
+  const handleLaunch = async (
+    presetToLaunch: SwarmPreset,
+    customModelMap?: Record<string, string>
+  ) => {
     try {
+      if (customModelMap) {
+        for (const [panelId, modelId] of Object.entries(customModelMap)) {
+          agentConfigStore.setModelForPanel(panelId, modelId);
+        }
+      }
       await launchSwarmPreset(presetToLaunch, projectPath);
       onClose();
     } catch {
@@ -162,257 +173,307 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="swarm-preset-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
+    <>
       <div
-        className={`w-full max-w-4xl bg-[#1c1c1e] text-white border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${className}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="swarm-preset-title"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
+        onClick={(e) => {
+          if (e.target === e.currentTarget && !isConfigModalOpen) onClose();
+        }}
       >
-        {/* Cabeçalho macOS com SF Pro Display */}
-        <div className="h-14 border-b border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#161618]">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                />
-              </svg>
-            </div>
-            <div>
-              <h2
-                id="swarm-preset-title"
-                className="text-[20px] font-semibold text-white/95 tracking-tight"
-              >
-                Modelos de Enxame
-              </h2>
-              <p className="text-[12px] text-white/60">
-                Lançamento coordenado de equipas de agentes com papéis especializados
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar modal de modelos de enxame"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Mensagem de Erro, se existir */}
-        {lastError && (
-          <div className="px-6 py-2.5 bg-red-950/60 border-b border-red-500/30 text-red-200 text-[12px] flex items-center gap-2 shrink-0">
-            <svg className="w-4 h-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="flex-1 font-medium">{lastError}</span>
-          </div>
-        )}
-
-        {/* Conteúdo com Grelha de Presets & Detalhes */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {presets.map((preset) => {
-              const isSelected = preset.id === selectedPresetId;
-              const isActiveSwarm = preset.id === activePresetId;
-
-              return (
-                <div
-                  key={preset.id}
-                  onClick={() => setSelectedPresetId(preset.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedPresetId(preset.id);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={isSelected}
-                  className={`min-h-[140px] p-4 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between ${
-                    isSelected
-                      ? 'bg-blue-600/15 border-blue-500/60 ring-2 ring-blue-500/30 shadow-lg'
-                      : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/10 hover:border-white/20'
-                  }`}
+        <div
+          className={`w-full max-w-4xl bg-[#1c1c1e] text-white border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${className}`}
+        >
+          {/* Cabeçalho macOS com SF Pro Display */}
+          <div className="h-14 border-b border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#161618]">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h2
+                  id="swarm-preset-title"
+                  className="text-[20px] font-semibold text-white/95 tracking-tight"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                          isSelected
-                            ? 'bg-blue-500 text-white shadow-md'
-                            : 'bg-white/10 text-white/80'
-                        }`}
-                      >
-                        {renderPresetIcon(preset.icon)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-[15px] font-semibold text-white/95 tracking-tight">
-                            {preset.name}
-                          </h3>
-                          {isActiveSwarm && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                              Ativo
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] font-mono text-white/60">
-                            Layout {preset.layout}
-                          </span>
-                          {preset.badge && (
-                            <>
-                              <span className="text-white/30 text-[10px]">•</span>
-                              <span className="text-[11px] text-white/70 font-medium">
-                                {preset.badge}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-[12px] text-white/70 mt-2 line-clamp-2 leading-relaxed">
-                    {preset.description}
-                  </p>
-
-                  {/* Pré-visualização dos Agentes que compõem o modelo */}
-                  <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-1.5 items-center">
-                    {preset.panels.map((panel) => (
-                      <RolePill key={panel.id} panel={panel} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Cartão de Detalhe do Modelo Selecionado */}
-          {currentPreset && (
-            <div className="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/10">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] font-semibold text-white/80 tracking-wide uppercase">
-                  Composição do Enxame ({currentPreset.panels.length} Agentes Especializados)
-                </span>
-                <span className="text-[11px] text-white/50 font-mono">
-                  Grelha {currentPreset.layout}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {currentPreset.panels.map((panel) => {
-                  const roleConfig = AGENT_ROLE_MAP[panel.role as AgentRoleType];
-                  const colorBadge = COLOR_BADGE_STYLES[panel.color];
-                  return (
-                    <div
-                      key={panel.id}
-                      className="p-2.5 rounded-lg bg-black/30 border border-white/5 flex flex-col justify-between"
-                    >
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className="text-[13px] font-medium text-white/90 truncate">
-                          {panel.title}
-                        </span>
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium ${colorBadge}`}
-                        >
-                          {roleConfig?.shortLabel || panel.role}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-white/60 line-clamp-2 leading-tight">
-                        {panel.initialPrompt || roleConfig?.description || 'Agente pronto.'}
-                      </p>
-                    </div>
-                  );
-                })}
+                  Modelos de Enxame
+                </h2>
+                <p className="text-[12px] text-white/60">
+                  Lançamento coordenado de equipas de agentes com papéis especializados
+                </p>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Rodapé com Botão de Ação Apple HIG (mínimo 44x44px) */}
-        <div className="h-16 border-t border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#161618]">
-          <div className="text-[12px] text-white/60">
-            {currentPreset && (
-              <span>
-                Lançará <strong className="text-white/90">{currentPreset.name}</strong> em layout{' '}
-                <strong className="text-white/90 font-mono">{currentPreset.layout}</strong>.
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onClose}
-              disabled={isLaunching}
-              className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
+              aria-label="Fechar modal de modelos de enxame"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
             >
-              Cancelar
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
+          </div>
 
-            <button
-              type="button"
-              onClick={() => currentPreset && handleLaunch(currentPreset)}
-              disabled={isLaunching || !currentPreset}
-              className="min-h-[44px] min-w-[44px] px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-400/40 shadow-lg shadow-blue-900/30 transition-all flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
-            >
-              {isLaunching ? (
-                <>
-                  <svg
-                    className="w-4 h-4 animate-spin text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
+          {/* Mensagem de Erro, se existir */}
+          {lastError && (
+            <div className="px-6 py-2.5 bg-red-950/60 border-b border-red-500/30 text-red-200 text-[12px] flex items-center gap-2 shrink-0">
+              <svg className="w-4 h-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="flex-1 font-medium">{lastError}</span>
+            </div>
+          )}
+
+          {/* Conteúdo com Grelha de Presets & Detalhes */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {presets.map((preset) => {
+                const isSelected = preset.id === selectedPresetId;
+                const isActiveSwarm = preset.id === activePresetId;
+
+                return (
+                  <div
+                    key={preset.id}
+                    onClick={() => setSelectedPresetId(preset.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedPresetId(preset.id);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
+                    className={`min-h-[140px] p-4 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-blue-600/15 border-blue-500/60 ring-2 ring-blue-500/30 shadow-lg'
+                        : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/10 hover:border-white/20'
+                    }`}
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8H4z"
-                    />
-                  </svg>
-                  <span>A inicializar enxame...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                  <span>Lançar Enxame</span>
-                </>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                            isSelected
+                              ? 'bg-blue-500 text-white shadow-md'
+                              : 'bg-white/10 text-white/80'
+                          }`}
+                        >
+                          {renderPresetIcon(preset.icon)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-[15px] font-semibold text-white/95 tracking-tight">
+                              {preset.name}
+                            </h3>
+                            {isActiveSwarm && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                Ativo
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] font-mono text-white/60">
+                              Layout {preset.layout}
+                            </span>
+                            {preset.badge && (
+                              <>
+                                <span className="text-white/30 text-[10px]">•</span>
+                                <span className="text-[11px] text-white/70 font-medium">
+                                  {preset.badge}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-[12px] text-white/70 mt-2 line-clamp-2 leading-relaxed">
+                      {preset.description}
+                    </p>
+
+                    {/* Pré-visualização dos Agentes que compõem o modelo */}
+                    <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-1.5 items-center">
+                      {preset.panels.map((panel) => (
+                        <RolePill key={panel.id} panel={panel} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Cartão de Detalhe do Modelo Selecionado */}
+            {currentPreset && (
+              <div className="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[12px] font-semibold text-white/80 tracking-wide uppercase">
+                    Composição do Enxame ({currentPreset.panels.length} Agentes Especializados)
+                  </span>
+                  <span className="text-[11px] text-white/50 font-mono">
+                    Grelha {currentPreset.layout}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {currentPreset.panels.map((panel) => {
+                    const roleConfig = AGENT_ROLE_MAP[panel.role as AgentRoleType];
+                    const colorBadge = COLOR_BADGE_STYLES[panel.color];
+                    return (
+                      <div
+                        key={panel.id}
+                        className="p-2.5 rounded-lg bg-black/30 border border-white/5 flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-[13px] font-medium text-white/90 truncate">
+                            {panel.title}
+                          </span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium ${colorBadge}`}
+                          >
+                            {roleConfig?.shortLabel || panel.role}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-white/60 line-clamp-2 leading-tight">
+                          {panel.initialPrompt || roleConfig?.description || 'Agente pronto.'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Rodapé do Cartão com Ação de Configurar Modelos */}
+                <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
+                  <span className="text-[11px] text-white/50">
+                    Ajuste modelos cognitivos específicos (Claude, GPT, Gemini, Ollama Local) antes de inicializar.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsConfigModalOpen(true)}
+                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-white/90 hover:text-white text-[12px] font-medium transition-colors flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
+                  >
+                    <svg className="w-3.5 h-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Configurar Modelos</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Rodapé com Botão de Ação Apple HIG (mínimo 44x44px) */}
+          <div className="h-16 border-t border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#161618]">
+            <div className="text-[12px] text-white/60">
+              {currentPreset && (
+                <span>
+                  Lançará <strong className="text-white/90">{currentPreset.name}</strong> em layout{' '}
+                  <strong className="text-white/90 font-mono">{currentPreset.layout}</strong>.
+                </span>
               )}
-            </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isLaunching}
+                className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsConfigModalOpen(true)}
+                disabled={isLaunching || !currentPreset}
+                className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-xl text-[13px] font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-colors flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
+              >
+                <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                <span>Configurar Modelos</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => currentPreset && handleLaunch(currentPreset)}
+                disabled={isLaunching || !currentPreset}
+                className="min-h-[44px] min-w-[44px] px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-400/40 shadow-lg shadow-blue-900/30 transition-all flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
+              >
+                {isLaunching ? (
+                  <>
+                    <svg
+                      className="w-4 h-4 animate-spin text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      />
+                    </svg>
+                    <span>A inicializar enxame...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                    <span>Lançar Enxame</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Modal Secundário de Configuração Detalhada de Modelos */}
+      {currentPreset && (
+        <AgentModelConfigModal
+          isOpen={isConfigModalOpen}
+          onClose={() => setIsConfigModalOpen(false)}
+          preset={currentPreset}
+          onConfirmLaunch={(customModelMap) => {
+            setIsConfigModalOpen(false);
+            handleLaunch(currentPreset, customModelMap);
+          }}
+        />
+      )}
+    </>
   );
 };
 

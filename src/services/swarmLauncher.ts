@@ -1,6 +1,7 @@
 import type { SwarmPreset } from '../config/swarmPresets';
 import { gridLayoutStore, type GridPanelConfig } from '../stores/useGridLayoutStore';
 import { swarmStore } from '../stores/useSwarmStore';
+import { agentConfigStore } from '../stores/useAgentConfigStore';
 import { terminalService } from './terminalService';
 import { portService } from './portService';
 import { agentRegistry } from './agentRegistry';
@@ -29,12 +30,13 @@ export async function launchSwarmPreset(
     // 1. Atualizar o layout no gridLayoutStore
     gridLayoutStore.setLayout(preset.layout);
 
-    // 2. Mapear cada painel do preset para um GridPanelConfig vivo
+    // 2. Mapear cada painel do preset para um GridPanelConfig vivo com resolução de modelo
     const panelsWithSessions: Array<{
       panel: (typeof preset.panels)[number];
       gridConfig: GridPanelConfig;
     }> = preset.panels.map((p) => {
       const sessionId = `${preset.id}-${p.id}-${timestamp}`;
+      const assignedModel = agentConfigStore.resolveModelForPanel(p.id, p.agentId, p.role);
       return {
         panel: p,
         gridConfig: {
@@ -45,6 +47,7 @@ export async function launchSwarmPreset(
           agentRole: p.role,
           color: p.color,
           status: p.initialStatus,
+          modelId: assignedModel.id,
         },
       };
     });
@@ -73,14 +76,37 @@ export async function launchSwarmPreset(
         panelsWithSessions.map(async ({ panel, gridConfig }) => {
           // Tentar carregar persona .md do agentRegistry se existir
           let personaPrompt = panel.initialPrompt || '';
+          let agentDefaultModel: string | null = null;
           try {
             const agentDef = await agentRegistry.getAgent(panel.agentId, projectPath);
-            if (agentDef && agentDef.system_prompt) {
-              personaPrompt = agentDef.system_prompt;
+            if (agentDef) {
+              if (agentDef.system_prompt) {
+                personaPrompt = agentDef.system_prompt;
+              }
+              if (agentDef.metadata?.default_model) {
+                agentDefaultModel = agentDef.metadata.default_model;
+              }
             }
           } catch {
             // Se persona não for encontrada no disco, utiliza prompt inicial do preset
           }
+
+          // Resolver modelo cognitivo final do painel/agente
+          const resolvedModel = agentConfigStore.resolveModelForPanel(
+            panel.id,
+            panel.agentId,
+            panel.role,
+            agentDefaultModel
+          );
+
+          const modelEnvVars: Record<string, string> = {
+            HELM_AGENT_MODEL: resolvedModel.id,
+            HELM_MODEL_PROFILE: resolvedModel.profile,
+            HELM_MODEL_CLI_FLAG: `--model ${resolvedModel.id}`,
+            ...(resolvedModel.provider === 'ollama' || resolvedModel.isLocal
+              ? { HELM_OLLAMA_ENDPOINT: 'http://localhost:11434' }
+              : {}),
+          };
 
           const injectedEnv: Record<string, string> = {
             HELM_SWARM_ID: preset.id,
@@ -90,6 +116,7 @@ export async function launchSwarmPreset(
             HELM_AGENT_TITLE: panel.title,
             HELM_AGENT_COLOR: panel.color,
             ...(personaPrompt ? { HELM_SYSTEM_PROMPT: personaPrompt } : {}),
+            ...modelEnvVars,
             ...panel.envVars,
             ...portEnvVars,
           };

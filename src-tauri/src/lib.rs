@@ -71,9 +71,10 @@ pub fn run() {
             commands::terminal::resize_pty,
             commands::terminal::kill_pty,
             commands::terminal::get_pty_scrollback,
-            // Comandos de Personas de Agentes (.md)
+            // Comandos de Personas de Agentes (.md) & Modelos
             commands::agents::list_discovered_agents,
             commands::agents::get_agent_details,
+            commands::agents::check_ollama_status,
             // Comandos do Protocolo A2A Inter-Agentes
             commands::message::send_a2a_message,
             commands::message::get_a2a_history,

@@ -11,6 +11,7 @@ export interface GridPanelConfig {
   agentRole?: AgentRoleType | string;
   color?: TerminalPanelColor;
   status?: TerminalStatus;
+  modelId?: string;
 }
 
 export interface GridLayoutState {
@@ -163,6 +164,16 @@ export const gridLayoutStore = {
     emitChange();
   },
 
+  updatePanelModel(id: string, modelId: string): void {
+    const panel = state.panels.find((p) => p.id === id);
+    if (!panel || panel.modelId === modelId) return;
+    state = {
+      ...state,
+      panels: state.panels.map((p) => (p.id === id ? { ...p, modelId } : p)),
+    };
+    emitChange();
+  },
+
   updatePanel(id: string, updates: Partial<GridPanelConfig>): void {
     const panel = state.panels.find((p) => p.id === id);
     if (!panel) return;
@@ -238,6 +249,7 @@ export function useGridLayoutStore() {
     updatePanelTitle: gridLayoutStore.updatePanelTitle,
     updatePanelColor: gridLayoutStore.updatePanelColor,
     updatePanelStatus: gridLayoutStore.updatePanelStatus,
+    updatePanelModel: gridLayoutStore.updatePanelModel,
     updatePanel: gridLayoutStore.updatePanel,
     setPanels: gridLayoutStore.setPanels,
     cycleNextPanel: gridLayoutStore.cycleNextPanel,

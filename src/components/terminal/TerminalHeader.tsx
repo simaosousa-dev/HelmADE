@@ -11,6 +11,9 @@ import {
   COLOR_CONFIGS,
 } from './TerminalStatusBadge';
 import { A2AExchangeIndicator } from '../a2a/A2AExchangeIndicator';
+import { ModelSelectorDropdown } from './ModelSelectorDropdown';
+import { agentConfigStore } from '../../stores/useAgentConfigStore';
+import { gridLayoutStore } from '../../stores/useGridLayoutStore';
 
 export interface TerminalHeaderProps {
   id: string;
@@ -20,6 +23,8 @@ export interface TerminalHeaderProps {
   agentRole?: AgentRoleType | string;
   color?: TerminalPanelColor;
   status?: TerminalStatus;
+  modelId?: string;
+  onModelChange?: (modelId: string) => void;
   isA2AActive?: boolean;
   isActive?: boolean;
   isMaximized?: boolean;
@@ -148,6 +153,7 @@ function renderAgentRoleIcon(role?: string): React.ReactNode {
  * - Título editável em linha com atalhos de teclado (Enter para guardar, Escape para cancelar).
  * - Ícone semântico do papel do agente.
  * - Distintivo de cor semântica configurável (Dourado, Azul, Verde, Roxo, Vermelho).
+ * - Seletor de Modelo de IA por Agente com perfis cognitivos.
  * - Distintivo de estado reativo com indicador luminoso pulsante para estado ativo.
  * - Alvos táteis ergonómicos com no mínimo 44x44px nos botões de maximizar e fechar.
  * - Suporte a duplo clique para maximizar/restaurar.
@@ -160,6 +166,8 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
   agentRole,
   color = 'blue',
   status = 'idle',
+  modelId,
+  onModelChange,
   isA2AActive = false,
   isActive = false,
   isMaximized = false,
@@ -230,6 +238,12 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
     setIsEditingTitle(false);
   };
 
+  const handleInternalModelChange = (newModelId: string) => {
+    agentConfigStore.setModelForPanel(id, newModelId);
+    gridLayoutStore.updatePanelModel(id, newModelId);
+    onModelChange?.(newModelId);
+  };
+
   const roleConfig = agentRole && agentRole in AGENT_ROLE_MAP
     ? AGENT_ROLE_MAP[agentRole as AgentRoleType]
     : undefined;
@@ -247,7 +261,7 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
           : 'bg-[#161618]/90 border-white/10 text-white/75 hover:text-white'
       } ${className}`}
     >
-      {/* Área Esquerda: Papel do Agente, Título Editável e Badges */}
+      {/* Área Esquerda: Papel do Agente, Título Editável, Seletor de Modelo e Badges */}
       <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
         {/* Ícone e Tooltip do Papel do Agente */}
         <div
@@ -264,7 +278,7 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
 
         {/* Título Inline Editável */}
         <div
-          className="min-w-0 max-w-[200px] sm:max-w-[280px]"
+          className="min-w-0 max-w-[160px] sm:max-w-[220px]"
           onClick={(e) => e.stopPropagation()}
           onDoubleClick={(e) => e.stopPropagation()}
         >
@@ -318,7 +332,7 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
         {agentId && (
           <span
             title={`ID do Agente: ${agentId}`}
-            className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/25 font-mono shrink-0 select-none"
+            className="hidden lg:inline-flex text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/25 font-mono shrink-0 select-none"
           >
             {agentId}
           </span>
@@ -385,6 +399,21 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
           )}
         </div>
 
+        {/* Seletor Interativo de Modelo de IA & Perfil Cognitivo */}
+        <div
+          className="shrink-0"
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <ModelSelectorDropdown
+            panelId={id}
+            agentId={agentId}
+            agentRole={agentRole}
+            currentModelId={modelId}
+            onModelChange={handleInternalModelChange}
+          />
+        </div>
+
         {/* Indicador de Troca Inter-Agentes A2A */}
         {isA2AActive && (
           <div className="shrink-0" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
@@ -400,7 +429,6 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
             onClick={
               onStatusChange
                 ? () => {
-                    // Ciclar estado se for interativo
                     const nextStatus: Record<TerminalStatus, TerminalStatus> = {
                       running: 'completed',
                       active: 'completed',

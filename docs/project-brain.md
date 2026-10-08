@@ -80,4 +80,5 @@
 * ✅ **Task 3.3**: Protocolo de Troca de Mensagens Inter-Agentes A2A & Espelhamento (Módulo 5) (`feat(a2a)`)
 * ✅ **Task 3.4**: Painel Lateral "Team Wire" (Feed de Chat dos IAs) (Módulo 5) (`feat(ui)`)
 * ✅ **Task 3.5**: Caixa de Prompt Primário do Orquestrador & Modo Broadcast (Módulo 5) (`feat(ui)`)
-* ⏳ **Próxima Tarefa em Fila**: **Task 3.6: Seletor de Modelo de IA por Agente & Perfis Cognitivos (Módulo 4)**
+* ✅ **Task 3.6**: Seletor de Modelo de IA por Agente & Perfis Cognitivos (Módulo 4) (`feat(agents)`)
+* ⏳ **Próxima Tarefa em Fila**: **Task 4.1: Painel de Webview Dockada & Deteção Automática de Portas (Módulo 6)**
