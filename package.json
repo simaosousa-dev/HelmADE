@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "tauri": "tauri",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "commitlint": {
@@ -24,6 +25,7 @@
     "@xterm/addon-webgl": "^0.18.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4",
