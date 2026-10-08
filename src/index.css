@@ -37,15 +37,18 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  background-color: #161618;
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sf);
-  font-size: 13px; /* SF Pro Text base — <19pt */
+  font-size: 13px; /* SF Pro Text base — <=19pt */
   line-height: 1.47;
-  background: transparent; /* allows native macOS vibrancy */
+  background-color: #161618;
   color: var(--color-sf-primary);
-  /* ponytail: transparent background depends on Tauri vibrancy config;
-     upgrade path: add #1c1c1e fallback for non-macOS platforms */
   -webkit-user-select: none;
   user-select: none;
 }

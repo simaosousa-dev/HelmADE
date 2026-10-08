@@ -47,6 +47,7 @@ export const RecentProjectCard: React.FC<RecentProjectCardProps> = ({
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={1.75}
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -58,11 +59,11 @@ export const RecentProjectCard: React.FC<RecentProjectCardProps> = ({
 
         {/* Metadados do Projeto */}
         <div className="min-w-0 flex flex-col">
-          <span className="text-[13px] font-medium text-white/90 truncate tracking-tight group-hover:text-white">
+          <span className="text-[13px] font-medium text-white/95 truncate tracking-tight group-hover:text-white">
             {project.name}
           </span>
           <span
-            className="text-[11px] text-white/45 truncate tracking-normal font-mono"
+            className="text-[11px] text-white/55 truncate tracking-normal font-mono"
             title={project.path}
           >
             {project.path}
@@ -72,16 +73,16 @@ export const RecentProjectCard: React.FC<RecentProjectCardProps> = ({
 
       {/* Ações e Data Relativa */}
       <div className="flex items-center gap-2 shrink-0 ml-3">
-        <span className="text-[11px] text-white/40 tracking-tight">
+        <span className="text-[11px] text-white/45 tracking-tight">
           {formatRelativeTime(project.last_opened_at)}
         </span>
 
-        {/* Botão de Remover com Hit-Box Acessível */}
+        {/* Botão de Remover com Hit-Box Acessível Apple HIG (44x44px) */}
         <button
           type="button"
           aria-label={`Remover ${project.name} dos recentes`}
           onClick={(e) => onRemove(project.id, e)}
-          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-[6px] text-white/40 hover:text-[#ff453a] hover:bg-[#ff453a]/15 transition-all duration-150"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[8px] text-white/45 hover:text-[#ff453a] hover:bg-[#ff453a]/15 focus-visible:ring-2 focus-visible:ring-[#ff453a] transition-all duration-150"
         >
           <svg
             className="w-4 h-4"
@@ -89,6 +90,7 @@ export const RecentProjectCard: React.FC<RecentProjectCardProps> = ({
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"

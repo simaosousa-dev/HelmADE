@@ -192,7 +192,7 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
                 id="swarm-preset-title"
                 className="text-[20px] font-semibold text-white/95 tracking-tight"
               >
-                Modelos de Enxame com 1 Clique
+                Modelos de Enxame
               </h2>
               <p className="text-[12px] text-white/60">
                 Lançamento coordenado de equipas de agentes com papéis especializados
@@ -405,7 +405,7 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
                       d="M13 10V3L4 14h7v7l9-11h-7z"
                     />
                   </svg>
-                  <span>Lançar Enxame em 1 Clique</span>
+                  <span>Lançar Enxame</span>
                 </>
               )}
             </button>

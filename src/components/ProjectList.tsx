@@ -32,14 +32,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   return (
     <div className="flex flex-col h-full w-full">
       {/* Barra de Pesquisa Rápida */}
-      <div className="relative mb-3">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-white/40">
+      <div className="relative mb-3 shrink-0">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/40">
           <svg
             className="w-4 h-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -53,20 +54,23 @@ export const ProjectList: React.FC<ProjectListProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Pesquisar projetos recentes..."
-          className="w-full pl-9 pr-8 py-2 bg-white/[0.05] border border-white/[0.1] rounded-[8px] text-[13px] text-white placeholder-white/35 outline-none focus:border-[#0a84ff] focus:ring-1 focus:ring-[#0a84ff] transition-all"
+          aria-label="Pesquisar projetos recentes"
+          className="w-full pl-10 pr-10 min-h-[44px] bg-white/[0.05] border border-white/10 rounded-[10px] text-[13px] text-white placeholder-white/40 outline-none focus:border-[#0a84ff] focus:ring-1 focus:ring-[#0a84ff] transition-all"
         />
         {searchTerm && (
           <button
             type="button"
+            aria-label="Limpar pesquisa"
             onClick={() => setSearchTerm('')}
-            className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-white/40 hover:text-white/80"
+            className="absolute inset-y-0 right-0 w-11 h-11 flex items-center justify-center text-white/40 hover:text-white/80 transition-colors"
           >
             <svg
-              className="w-3.5 h-3.5"
+              className="w-4 h-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={2}
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -81,7 +85,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
       {/* Lista com Scroll Suave */}
       <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-[180px]">
         {loading ? (
-          <div className="flex items-center justify-center h-32 text-white/40 text-[13px]">
+          <div className="flex items-center justify-center h-32 text-white/50 text-[13px]">
             A carregar projetos...
           </div>
         ) : filteredProjects.length > 0 ? (
@@ -94,18 +98,19 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             />
           ))
         ) : searchTerm ? (
-          <div className="flex flex-col items-center justify-center h-32 text-center text-white/40 text-[13px] p-4">
+          <div className="flex flex-col items-center justify-center h-32 text-center text-white/50 text-[13px] p-4">
             <span>Nenhum projeto encontrado para "{searchTerm}"</span>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-40 text-center rounded-[10px] border border-dashed border-white/10 p-6">
-            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/30 mb-2">
+          <div className="flex flex-col items-center justify-center h-44 text-center rounded-[10px] border border-dashed border-white/10 p-6 bg-white/[0.02]">
+            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 mb-2">
               <svg
                 className="w-5 h-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={1.5}
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
@@ -114,16 +119,16 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 />
               </svg>
             </div>
-            <p className="text-[13px] text-white/60 mb-1">
+            <p className="text-[13px] text-white/70 mb-1 font-medium">
               Ainda não tem projetos abertos
             </p>
-            <p className="text-[11px] text-white/35 mb-3">
-              Abra uma pasta local do seu computador para começar.
+            <p className="text-[12px] text-white/45 mb-3">
+              Abra uma pasta local para começar a coordenar agentes.
             </p>
             <button
               type="button"
               onClick={onOpenFolderDialog}
-              className="px-3.5 py-1.5 rounded-[6px] bg-[#0a84ff] hover:bg-[#0071e3] text-white text-[12px] font-medium transition-colors"
+              className="min-h-[44px] px-4 py-2 rounded-[8px] bg-[#0a84ff] hover:bg-[#0071e3] text-white text-[13px] font-medium transition-colors flex items-center justify-center shadow-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
             >
               Abrir Pasta...
             </button>

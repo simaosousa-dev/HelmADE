@@ -49,7 +49,7 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({ onOpenProject }) => {
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const firstFile = files[0];
-      // Em ambientes desktop (Tauri/Electron), o path completo do arquivo ou pasta está disponível
+      // Em ambientes desktop (Tauri/Electron), o path completo do ficheiro ou pasta está disponível
       const fullPath = (firstFile as unknown as { path?: string }).path;
       if (fullPath) {
         const proj = await addProjectByPath(fullPath, firstFile.name);
@@ -70,83 +70,105 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({ onOpenProject }) => {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className="relative flex flex-col h-screen w-screen overflow-hidden bg-black/40 backdrop-blur-2xl text-white select-none"
+      className="relative flex flex-col h-screen w-screen overflow-hidden bg-[#161618] text-white select-none"
     >
       {/* Barra de Título Arrastável (macOS Traffic Lights Area) */}
-      <div
+      <header
         data-tauri-drag-region
-        className="h-9 w-full flex items-center justify-between px-4 shrink-0 border-b border-white/[0.06]"
+        className="h-10 w-full flex items-center justify-between px-5 shrink-0 border-b border-white/[0.08] bg-[#1a1a1c]"
       >
-        <div className="flex items-center gap-2 pl-16">
-          <span className="text-[11px] font-semibold tracking-wide text-white/40 uppercase">
+        <div className="flex items-center gap-2 pl-20">
+          <span className="text-[11px] font-semibold tracking-wider text-white/50 uppercase">
             HelmADE Cockpit
           </span>
         </div>
-        <div className="text-[11px] text-white/30 font-mono">
-          v1.0.0 · Local Zero-Cost
+        <div className="text-[11px] text-white/40 font-mono">
+          HelmADE · v1.0.0
         </div>
-      </div>
+      </header>
 
       {/* Conteúdo Principal Dividido em Duas Colunas */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-6 md:p-8 gap-8 max-w-6xl w-full mx-auto">
-        {/* Coluna Esquerda: Hero & Ações Primárias */}
-        <div className="flex flex-col justify-between md:w-1/2 space-y-6">
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden p-6 md:p-8 gap-8 max-w-6xl w-full mx-auto">
+        {/* Coluna Esquerda: Identidade & Ações Primárias */}
+        <section className="flex flex-col justify-between md:w-1/2 space-y-6">
           <div className="space-y-4">
-            {/* Logótipo / Cabeçalho Principal */}
+            {/* Logótipo / Identidade Profissional */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-12 h-12 rounded-[12px] bg-gradient-to-br from-[#ffd60a]/20 to-[#0a84ff]/20 border border-white/15 text-2xl shadow-lg shadow-black/40">
-                ⚓
+              <div className="flex items-center justify-center w-12 h-12 rounded-[12px] bg-[#222226] border border-white/12 shadow-sm text-[#0a84ff] shrink-0">
+                <svg
+                  className="w-6 h-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="5" r="3" />
+                  <line x1="12" y1="22" x2="12" y2="8" />
+                  <path d="M5 12H2a10 10 0 0 0 20 0h-3" />
+                </svg>
               </div>
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight text-white font-sf">
+                <h1 className="text-2xl font-semibold tracking-tight text-white font-sf">
                   HelmADE
                 </h1>
-                <p className="text-[12px] text-white/50 tracking-normal">
-                  Autonomous Swarm Cockpit & Development Environment
+                <p className="text-[12px] text-white/60 tracking-normal">
+                  Ambiente de Desenvolvimento para Enxames de Agentes
                 </p>
               </div>
             </div>
 
-            {/* Badges de Invariantes */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              <span className="px-2.5 py-1 rounded-[6px] text-[11px] font-medium bg-[#30d158]/15 text-[#30d158] border border-[#30d158]/25">
-                ● Custo 0.00€
-              </span>
-              <span className="px-2.5 py-1 rounded-[6px] text-[11px] font-medium bg-[#0a84ff]/15 text-[#0a84ff] border border-[#0a84ff]/25">
+            {/* Badges Funcionais de Engenharia */}
+            <div className="flex flex-wrap gap-2 pt-1" aria-label="Capacidades da plataforma">
+              <span className="px-2.5 py-1 rounded-[6px] text-[11px] font-medium bg-[#0a84ff]/10 text-[#0a84ff] border border-[#0a84ff]/25">
                 Git Worktrees Isolados
               </span>
-              <span className="px-2.5 py-1 rounded-[6px] text-[11px] font-medium bg-[#bf5af2]/15 text-[#bf5af2] border border-[#bf5af2]/25">
-                Speech.framework Nativo
+              <span className="px-2.5 py-1 rounded-[6px] text-[11px] font-medium bg-white/[0.06] text-white/80 border border-white/10">
+                Terminais Concorrentes
+              </span>
+              <span className="px-2.5 py-1 rounded-[6px] text-[11px] font-medium bg-[#30d158]/10 text-[#30d158] border border-[#30d158]/25">
+                Persistência SQLite Local
               </span>
             </div>
 
-            {/* Texto Descritivo */}
+            {/* Texto Descritivo Direto e Funcional */}
             <p className="text-[13px] text-white/70 leading-relaxed max-w-md">
-              Comande enxames paralelos de agentes especializados em terminais
-              locais isolados por Git Worktree, com persistência SQLite e zero
-              subscrições cloud.
+              Ambiente de desenvolvimento para coordenação de agentes com terminais
+              concorrentes e isolamento por Git Worktree.
             </p>
           </div>
 
           {/* Área de Drag & Drop & Botões de Ação */}
           <div className="space-y-3">
-            {/* Dropzone com Feedback Visual */}
+            {/* Dropzone com Feedback Visual e Contraste Sólido */}
             <div
-              className={`flex flex-col items-center justify-center p-6 rounded-[12px] border-2 border-dashed transition-all duration-200 cursor-pointer ${
+              role="button"
+              tabIndex={0}
+              aria-label="Arrastar pasta de projeto ou clicar para selecionar"
+              className={`flex flex-col items-center justify-center p-6 rounded-[12px] border-2 border-dashed transition-all duration-150 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] ${
                 isDraggingOver
-                  ? 'border-[#0a84ff] bg-[#0a84ff]/15 scale-[1.01]'
-                  : 'border-white/15 bg-white/[0.03] hover:border-white/30 hover:bg-white/[0.06]'
+                  ? 'border-[#0a84ff] bg-[#0a84ff]/10 scale-[1.01]'
+                  : 'border-white/15 bg-[#1c1c1e] hover:border-white/30 hover:bg-[#202024]'
               }`}
               onClick={handleOpenFolder}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  void handleOpenFolder();
+                }
+              }}
             >
               <svg
                 className={`w-8 h-8 mb-2 transition-colors ${
-                  isDraggingOver ? 'text-[#0a84ff]' : 'text-white/40'
+                  isDraggingOver ? 'text-[#0a84ff]' : 'text-white/45'
                 }`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={1.5}
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
@@ -164,19 +186,20 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({ onOpenProject }) => {
               </span>
             </div>
 
-            {/* Botões de Ação com Touch Target Apple HIG (mín 44px) */}
+            {/* Botões de Ação com Touch Target Apple HIG (mínimo 44x44px) */}
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={handleOpenFolder}
-                className="flex-1 min-h-[44px] flex items-center justify-center gap-2 px-4 rounded-[10px] bg-[#0a84ff] hover:bg-[#0071e3] active:bg-[#0062c4] text-white text-[13px] font-medium transition-all shadow-md shadow-[#0a84ff]/25 focus-visible:ring-2 focus-visible:ring-white"
+                className="flex-1 min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#0a84ff] hover:bg-[#0071e3] active:bg-[#0062c4] text-white text-[13px] font-medium transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
               >
                 <svg
-                  className="w-4 h-4"
+                  className="w-4 h-4 shrink-0"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                   strokeWidth={2}
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -184,22 +207,32 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({ onOpenProject }) => {
                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                   />
                 </svg>
-                Abrir Pasta Local...
+                <span>Abrir Pasta Local...</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleOpenFolder}
-                className="min-h-[44px] px-4 flex items-center justify-center gap-2 rounded-[10px] bg-white/[0.08] hover:bg-white/[0.14] active:bg-white/[0.2] border border-white/[0.12] text-white/90 text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0a84ff]"
+                className="min-h-[44px] px-5 py-2.5 flex items-center justify-center gap-2 rounded-[10px] bg-white/[0.06] hover:bg-white/[0.1] active:bg-white/[0.14] border border-white/10 text-white/90 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:outline-none"
               >
-                Novo Projeto
+                <svg
+                  className="w-4 h-4 shrink-0 text-white/60"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Novo Projeto</span>
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Coluna Direita: Projetos Recentes */}
-        <div className="flex flex-col md:w-1/2 p-5 rounded-[14px] bg-white/[0.03] border border-white/[0.08] backdrop-blur-md overflow-hidden">
+        <section className="flex flex-col md:w-1/2 p-5 rounded-[14px] bg-[#1c1c1e] border border-white/10 overflow-hidden">
           <div className="flex items-center justify-between mb-3 shrink-0">
             <h2 className="text-[14px] font-semibold text-white/90 tracking-tight">
               Projetos Recentes
@@ -219,8 +252,10 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({ onOpenProject }) => {
             }}
             onOpenFolderDialog={handleOpenFolder}
           />
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 };
+
+export default WelcomeView;

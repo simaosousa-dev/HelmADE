@@ -57,11 +57,11 @@ export const MergeReviewView: React.FC<MergeReviewViewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-2xl text-white select-none animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#161618] text-white select-none animate-in fade-in duration-200">
       {/* Barra de Título e Navegação Superior */}
       <div
         data-tauri-drag-region
-        className="h-14 border-b border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#161618]/90"
+        className="h-14 border-b border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#1a1a1c]"
       >
         <div className="flex items-center gap-3">
           <button
@@ -178,7 +178,7 @@ export const MergeReviewView: React.FC<MergeReviewViewProps> = ({
       </div>
 
       {/* Barra de Ações e Rodapé */}
-      <div className="h-20 border-t border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#161618]/90">
+      <div className="h-20 border-t border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#1a1a1c]">
         <div className="flex items-center gap-6">
           {/* Seletor de Estratégia de Merge */}
           <div className="flex flex-col gap-1">
