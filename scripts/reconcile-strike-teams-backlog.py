@@ -197,7 +197,7 @@ def close_outdated_issues(issue_map_by_num: Dict[int, Dict[str, Any]]) -> None:
 TASK_2_3_BODY = """### 🎯 Objetivo
 Implementar na interface desktop as grelhas CSS Grid com alternância de layouts de 1x1 até 4x4 (16 painéis paralelos) e atalho `Cmd+Enter` para toggle instantâneo de zoom e maximização sem desmontar componentes nem perder instâncias de PTY.
 
-### 🛡️ Equipa de Subagentes Atribuída (Trio de Ataque)
+### 🛡️ Equipa Especializada Atribuída (Trio de Ataque)
 🎨 **Trio UI/UX & Native Desktop**
 • Especialista de Interface: `frontend-design-specialist` (Skills: `react-patterns`, `design-taste-frontend`, `apple-hig-auditor`)
 • Auditor de Qualidade: `qa-security-auditor` (Skills: `strict-type-verifier`, `apple-hig-auditor`)
@@ -222,7 +222,7 @@ Comutação fluida de layouts sem destruição de buffers ou desconexões PTY; t
 TASK_2_4_BODY = """### 🎯 Objetivo
 Desenvolver cabeçalhos semânticos em cada painel de terminal com badges coloridas distintas por agente, indicadores de estado de ligação e controlos rápidos de foco e fecho.
 
-### 🛡️ Equipa de Subagentes Atribuída (Trio de Ataque)
+### 🛡️ Equipa Especializada Atribuída (Trio de Ataque)
 🎨 **Trio UI/UX & Native Desktop**
 • Especialista de Interface: `frontend-design-specialist` (Skills: `react-patterns`, `design-taste-frontend`, `apple-hig-auditor`)
 • Auditor de Qualidade: `qa-security-auditor` (Skills: `strict-type-verifier`, `apple-hig-auditor`)
@@ -541,7 +541,7 @@ def format_issue_body(task: Dict[str, str]) -> str:
     return f"""### 🎯 Objetivo
 {task['objective']}
 
-### 🛡️ Equipa de Subagentes Atribuída (Trio de Ataque)
+### 🛡️ Equipa Especializada Atribuída (Trio de Ataque)
 {task['team']}
 
 ### 🧰 Skills Obrigatórias

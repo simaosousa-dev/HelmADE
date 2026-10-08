@@ -37,7 +37,7 @@ Chosen option: **"Opção A — Mapeamento por Perfis Cognitivos e Flags Transpa
 * Exige manutenção de um catálogo de modelos suportados e respetivos identificadores de CLI.
 * Utilizadores com modelos locais requerem recursos suficientes de RAM/VRAM na sua máquina.
 
-## Sub-Agent Delegation Plan
+## Implementation Plan
 
 1. **`frontend-design-specialist`**: Desenvolver `src/components/terminal/ModelSelectorDropdown.tsx` e `AgentModelConfigModal.tsx`.
 2. **`database-specialist`**: Adicionar campos de persistência de modelo na tabela `grid_agents` em `src-tauri/src/db/schema.rs`.

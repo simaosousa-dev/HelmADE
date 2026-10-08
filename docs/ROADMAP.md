@@ -6,7 +6,7 @@
 
 ## 🎯 Sumário Executivo & Princípios de Orquestração
 
-Este documento define o plano integral de implementação do **HelmADE**, cobrindo da fundação até à versão 1.0 pronta para produção. Cada tarefa foi desenhada para ser executada de forma atómica e verificável através de subagentes especializados, aplicando as skills de maior afinidade, com salvaguarda contínua no Git através de Conventional Commits 1.0.0.
+Este documento define o plano integral de implementação do **HelmADE**, cobrindo da fundação até à versão 1.0 pronta para produção. Cada tarefa foi desenhada para ser executada de forma atómica e verificável, aplicando as skills de maior afinidade, com salvaguarda contínua no Git através de Conventional Commits 1.0.0.
 
 ### 🛡️ Os Três Invariantes do Projeto
 1. **Custo Absoluto ZERO (0.00€)**: Sem cloud paga, sem subscrições, 100% de execução local.

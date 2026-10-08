@@ -44,7 +44,7 @@ Chosen option: **"Opção A — Tauri 2.x com Rust"**, porque combina pegada de 
 * FFI Objective-C (`objc2`) exige código `unsafe` e conhecimento da ABI Apple; testabilidade reduzida.
 * Tauri 2.x é mais recente que 1.x — alguns plugins da comunidade ainda em desenvolvimento.
 
-## Sub-Agent Delegation Plan
+## Implementation Plan
 
 1. **`fullstack-engineer`**: Implementar `portable-pty` PTY manager, ring buffer, e IPC handlers em `src-tauri/src/terminal/`.
 2. **`fullstack-engineer`**: Implementar FFI Objective-C para `SFSpeechRecognizer` em `src-tauri/src/voice/`.

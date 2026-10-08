@@ -38,7 +38,7 @@ Chosen option: **"Opção A — Apple Speech.framework nativo do macOS via FFI/O
 * Dependência da disponibilidade da API Speech no macOS (requer permissão de microfone nas Capabilities de segurança da aplicação).
 * Exige pós-processamento heurístico para terminologia de programação (dicionário técnico para termos como `camelCase`, `tsconfig`, `git rebase`).
 
-## Sub-Agent Delegation Plan
+## Implementation Plan
 
 1. **`fullstack-engineer`**: Implementar bindings nativos em Rust (`src-tauri/src/voice/macos_speech.rs`) e FFI de áudio.
 2. **`performance-engineer`**: Garantir latência < 300ms entre libertação do hotkey e preenchimento da prompt.

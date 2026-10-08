@@ -38,7 +38,7 @@ Chosen option: **"Opção A — portable-pty com RingBuffer circular e emissão 
 * Requer a dependência `portable-pty = "0.8"` no manifesto `Cargo.toml`.
 * Cada sessão ativa mantém uma thread de leitura bloqueante em background até o processo terminar (16 threads para 16 PTYs, com overhead de CPU/RAM irrelevante no macOS).
 
-## Sub-Agent Delegation Plan
+## Implementation Plan
 
 1. **`fullstack-engineer`**: Implementar `src-tauri/src/terminal/ring_buffer.rs`, `src-tauri/src/terminal/pty.rs`, `src-tauri/src/terminal/manager.rs`, `src-tauri/src/commands/terminal.rs`, e serviços frontend `src/types/terminal.ts` e `src/services/terminalService.ts`.
 2. **`performance-engineer`**: Avaliar throughput e contenção de lock no RingBuffer garantindo taxa de transferência >= 10MB/s e zero I/O jitter.

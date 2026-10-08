@@ -38,7 +38,7 @@ Chosen option: **"Opção A — Git Worktrees + Symlinks Automáticos"**, porque
 * Em sistemas operativos que limitem a criação de symlinks sem privilégios (ex.: Windows Developer Mode desativado), requer atenção especial (no macOS é 100% nativo e sem restrições).
 * Ferramentas que não sigam symlinks por padrão exigem flags de configuração adequadas.
 
-## Sub-Agent Delegation Plan
+## Implementation Plan
 
 1. **`fullstack-engineer`**: Implementar o gestor de ciclo de vida de worktrees em `src-tauri/src/git/worktree.rs` e symlinks em `src-tauri/src/git/symlink.rs`.
 2. **`database-specialist`**: Modelar a tabela `worktrees` no SQLite local para rastreio de grelhas ativas e caminhos.
