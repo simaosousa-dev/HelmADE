@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod audio;
 pub mod browser;
 pub mod commands;
 pub mod db;
@@ -7,15 +8,18 @@ pub mod network;
 pub mod terminal;
 
 use agents::router::{MessageRouter, MessageRouterState};
+use audio::VoiceManager;
 use browser::PortSniffer;
 use commands::browser::BrowserState;
 use commands::network::PortState;
 use commands::terminal::PtyState;
+use commands::voice::VoiceState;
 use db::DbState;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use terminal::PtyManager;
+
 
 fn resolve_db_path() -> PathBuf {
     let mut dir = dirs_or_home();
@@ -42,6 +46,7 @@ pub fn run() {
     let browser_state: BrowserState = Arc::new(PortSniffer::new());
     let pty_state: PtyState = Arc::new(PtyManager::new());
     let router_state: MessageRouterState = Arc::new(MessageRouter::new());
+    let voice_state: VoiceState = Arc::new(VoiceManager::new());
 
     tauri::Builder::default()
         .manage(db_state)
@@ -49,6 +54,7 @@ pub fn run() {
         .manage(browser_state)
         .manage(pty_state)
         .manage(router_state)
+        .manage(voice_state)
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             // Comandos de Projetos & SQLite
@@ -89,6 +95,13 @@ pub fn run() {
             commands::browser::get_detected_servers,
             commands::browser::clear_detected_servers,
             commands::browser::open_in_external_browser,
+            // Comandos de Voz a Custo Zero HelmVoice (Apple Speech & AVFoundation)
+            commands::voice::check_voice_permissions,
+            commands::voice::request_voice_permissions,
+            commands::voice::start_voice_transcription,
+            commands::voice::stop_voice_transcription,
+            commands::voice::get_voice_status,
+            commands::voice::is_on_device_speech_supported,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

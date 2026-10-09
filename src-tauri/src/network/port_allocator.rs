@@ -105,6 +105,7 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").expect("falha ao criar socket teste");
         let free_port = listener.local_addr().unwrap().port();
         drop(listener);
+        std::thread::sleep(std::time::Duration::from_millis(20));
 
         assert!(PortAllocator::is_port_available(free_port));
     }
