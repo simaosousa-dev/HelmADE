@@ -3,6 +3,8 @@ import { useTeamWireStore } from '../../stores/useTeamWireStore';
 import { useGridLayoutStore } from '../../stores/useGridLayoutStore';
 import { useA2AStore } from '../../stores/useA2AStore';
 import { BroadcastToggle } from './BroadcastToggle';
+import { VoiceWaveIndicator } from '../voice/VoiceWaveIndicator';
+import { useGlobalPushToTalk } from '../../hooks/useGlobalPushToTalk';
 import type { A2AMessageType } from '../../types/a2a';
 
 export interface PromptInputProps {
@@ -36,6 +38,12 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   const { panels, activePanelId } = useGridLayoutStore();
   const { peers } = useA2AStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Hook Push-to-Talk com injeção automática no prompt ativo
+  const { state: pttState, toggleListening } = useGlobalPushToTalk({
+    applyPhonetics: true,
+    autoInjectPrompt: true,
+  });
 
   // Terminais ativos com sessão PTY viva
   const activePanels = panels.filter((p) => Boolean(p.sessionId));
@@ -176,7 +184,13 @@ export const PromptInput: React.FC<PromptInputProps> = ({
           </div>
 
           {/* Feedback de Despacho & Dica de Atalho */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <VoiceWaveIndicator
+              state={pttState}
+              onToggle={toggleListening}
+              variant="compact"
+            />
+
             {lastDispatchResult && (
               <div
                 role="status"
@@ -328,6 +342,12 @@ export const PromptInput: React.FC<PromptInputProps> = ({
               ? 'border-amber-500/40 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40'
               : 'border-white/15 focus:border-blue-500/80 focus:ring-1 focus:ring-accent-blue/40'
           }`}
+        />
+
+        <VoiceWaveIndicator
+          state={pttState}
+          onToggle={toggleListening}
+          variant="compact"
         />
 
         <button

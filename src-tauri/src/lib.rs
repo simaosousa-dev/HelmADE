@@ -13,11 +13,12 @@ use browser::PortSniffer;
 use commands::browser::BrowserState;
 use commands::network::PortState;
 use commands::terminal::PtyState;
+use commands::shortcuts::{ShortcutConfig, ShortcutState};
 use commands::voice::VoiceState;
 use db::DbState;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use terminal::PtyManager;
 
 
@@ -47,6 +48,7 @@ pub fn run() {
     let pty_state: PtyState = Arc::new(PtyManager::new());
     let router_state: MessageRouterState = Arc::new(MessageRouter::new());
     let voice_state: VoiceState = Arc::new(VoiceManager::new());
+    let shortcut_state: ShortcutState = Arc::new(RwLock::new(ShortcutConfig::default()));
 
     tauri::Builder::default()
         .manage(db_state)
@@ -55,6 +57,7 @@ pub fn run() {
         .manage(pty_state)
         .manage(router_state)
         .manage(voice_state)
+        .manage(shortcut_state)
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             // Comandos de Projetos & SQLite
@@ -102,6 +105,10 @@ pub fn run() {
             commands::voice::stop_voice_transcription,
             commands::voice::get_voice_status,
             commands::voice::is_on_device_speech_supported,
+            // Comandos de Gestão de Atalhos e Push-to-Talk
+            commands::shortcuts::get_shortcut_config,
+            commands::shortcuts::update_shortcut_config,
+            commands::shortcuts::is_push_to_talk_available,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
