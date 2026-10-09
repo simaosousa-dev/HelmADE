@@ -75,6 +75,24 @@ export const STATUS_CONFIGS: Record<TerminalStatus, StatusConfig> = {
     glowColor: 'shadow-[0_0_8px_rgba(248,113,113,0.7)]',
     isPulsing: false,
   },
+  standby: {
+    label: 'Standby',
+    textColor: 'text-indigo-200',
+    bgColor: 'bg-indigo-500/15',
+    borderColor: 'border-indigo-400/30',
+    dotColor: 'bg-indigo-400',
+    glowColor: 'shadow-[0_0_6px_rgba(129,140,248,0.5)]',
+    isPulsing: false,
+  },
+  blocked: {
+    label: 'Bloqueado',
+    textColor: 'text-amber-200',
+    bgColor: 'bg-amber-500/20',
+    borderColor: 'border-amber-400/50',
+    dotColor: 'bg-amber-400',
+    glowColor: 'shadow-[0_0_10px_rgba(251,191,36,0.8)]',
+    isPulsing: true,
+  },
 };
 
 export interface ColorBadgeConfig {

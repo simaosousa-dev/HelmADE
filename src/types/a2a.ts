@@ -14,10 +14,13 @@ export interface A2AMessage {
   mirroredToPty?: boolean;
 }
 
+import type { TerminalStatus } from './terminal.ts';
+
 export interface A2APeer {
   id: string;
   name: string;
   role?: string;
-  status?: 'idle' | 'running' | 'waiting' | 'completed' | 'error' | 'active';
+  status?: TerminalStatus;
   sessionId?: string;
 }
+

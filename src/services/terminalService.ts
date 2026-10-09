@@ -1,6 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import type { SpawnPtyOptions } from '../types/terminal';
+import type {
+  SpawnPtyOptions,
+  BlockedPromptInfo,
+  SessionStatusPayload,
+} from '../types/terminal.ts';
 
 export const terminalService = {
   /**
@@ -53,4 +57,82 @@ export const terminalService = {
       callback(event.payload);
     });
   },
+
+  /**
+   * Responde a um prompt bloqueado (y/N, password, texto) no terminal.
+   */
+  async respondToPrompt(sessionId: string, response: string): Promise<void> {
+    return invoke<void>('respond_to_blocked_prompt', { sessionId, response });
+  },
+
+  /**
+   * Obtém o estado de inatividade e standby de uma sessão PTY.
+   */
+  async getSessionIdleStatus(sessionId: string): Promise<SessionStatusPayload> {
+    return invoke<SessionStatusPayload>('get_session_idle_status', { sessionId });
+  },
+
+  /**
+   * Lista o estado de inatividade de todos os terminais ativos.
+   */
+  async listAllIdleStatuses(): Promise<SessionStatusPayload[]> {
+    return invoke<SessionStatusPayload[]>('list_all_terminal_idle_statuses');
+  },
+
+  /**
+   * Define o estado de standby/hibernação de uma sessão.
+   */
+  async setSessionStandby(sessionId: string, standby: boolean): Promise<void> {
+    return invoke<void>('set_session_standby', { sessionId, standby });
+  },
+
+  /**
+   * Envia uma notificação nativa macOS via canal IPC.
+   */
+  async sendNativeNotification(
+    title: string,
+    subtitle?: string,
+    body?: string,
+    sound?: boolean
+  ): Promise<void> {
+    return invoke<void>('send_macos_notification', {
+      title,
+      subtitle: subtitle ?? null,
+      body: body ?? '',
+      sound: sound ?? true,
+    });
+  },
+
+  /**
+   * Escuta alertas de prompt interativo bloqueado (y/N, password, etc.).
+   */
+  async onBlockedPrompt(callback: (info: BlockedPromptInfo) => void): Promise<UnlistenFn> {
+    return listen<BlockedPromptInfo>('pty-blocked-prompt', (event) => {
+      callback(event.payload);
+    });
+  },
+
+  /**
+   * Escuta desativação do estado de bloqueio quando o processo prossegue.
+   */
+  async onBlockedCleared(callback: (payload: { sessionId: string }) => void): Promise<UnlistenFn> {
+    return listen<{ sessionId: string }>('pty-blocked-cleared', (event) => {
+      callback(event.payload);
+    });
+  },
+
+  /**
+   * Escuta transições de estado de standby (hibernação/ativação).
+   */
+  async onStandbyChanged(
+    callback: (payload: { sessionId: string; state: string; isStandby: boolean }) => void
+  ): Promise<UnlistenFn> {
+    return listen<{ sessionId: string; state: string; isStandby: boolean }>(
+      'pty-standby-changed',
+      (event) => {
+        callback(event.payload);
+      }
+    );
+  },
 };
+

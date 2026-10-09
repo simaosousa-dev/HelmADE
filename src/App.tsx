@@ -7,6 +7,7 @@ import { TeamWire } from './components/a2a';
 import { PromptInput } from './components/teamwire';
 import { LiveBrowserDock } from './components/preview';
 import { useA2AStore } from './stores/useA2AStore';
+import { terminalStore } from './stores/useTerminalStore';
 import { useAutoPortDetection } from './hooks/useAutoPortDetection';
 import type { Project } from './types/project';
 
@@ -21,6 +22,17 @@ export default function App() {
     toggleOpen: togglePreview,
     servers: previewServers,
   } = useAutoPortDetection();
+
+  // Inicializar escuta global de prompts bloqueados e hibernação PTY
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    terminalStore.initListeners().then((c) => {
+      cleanup = c;
+    });
+    return () => {
+      cleanup?.();
+    };
+  }, []);
 
   // Sincronizar pares (peers) do enxame com base nos painéis ativos da grelha
   useEffect(() => {

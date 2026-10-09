@@ -120,6 +120,13 @@ impl PtySession {
                         if let Some(ref handle) = app_handle {
                             let _ = handle.emit(&event_name, &chunk);
 
+                            // Deteção heurística de prompts interativos bloqueados e standby de PTYs
+                            if let Some(idle_detector) =
+                                handle.try_state::<crate::terminal::idle_detector::IdleDetectorState>()
+                            {
+                                idle_detector.process_chunk(&reader_session_id, &chunk, handle);
+                            }
+
                             // Sniffer não-bloqueante de portas e servidores de desenvolvimento
                             let detected_servers =
                                 crate::browser::PortSniffer::sniff_chunk(&chunk, &reader_session_id);

@@ -5,6 +5,8 @@ pub mod commands;
 pub mod db;
 pub mod git;
 pub mod network;
+pub mod notifications;
+pub mod pty;
 pub mod terminal;
 
 use agents::router::{MessageRouter, MessageRouterState};
@@ -12,14 +14,16 @@ use audio::VoiceManager;
 use browser::PortSniffer;
 use commands::browser::BrowserState;
 use commands::network::PortState;
-use commands::terminal::PtyState;
 use commands::shortcuts::{ShortcutConfig, ShortcutState};
+use commands::terminal::PtyState;
 use commands::voice::VoiceState;
 use db::DbState;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
+use terminal::idle_detector::{IdleDetector, IdleDetectorState};
 use terminal::PtyManager;
+
 
 
 fn resolve_db_path() -> PathBuf {
@@ -46,6 +50,7 @@ pub fn run() {
     let port_state = PortState::default();
     let browser_state: BrowserState = Arc::new(PortSniffer::new());
     let pty_state: PtyState = Arc::new(PtyManager::new());
+    let idle_state: IdleDetectorState = Arc::new(IdleDetector::new());
     let router_state: MessageRouterState = Arc::new(MessageRouter::new());
     let voice_state: VoiceState = Arc::new(VoiceManager::new());
     let shortcut_state: ShortcutState = Arc::new(RwLock::new(ShortcutConfig::default()));
@@ -55,6 +60,7 @@ pub fn run() {
         .manage(port_state)
         .manage(browser_state)
         .manage(pty_state)
+        .manage(idle_state)
         .manage(router_state)
         .manage(voice_state)
         .manage(shortcut_state)
@@ -79,12 +85,17 @@ pub fn run() {
             commands::network::release_swarm_port,
             commands::network::get_swarm_port,
             commands::network::get_swarm_env_vars,
-            // Comandos de Terminal PTY Multiplexer
+            // Comandos de Terminal PTY Multiplexer & Standby
             commands::terminal::spawn_pty,
             commands::terminal::write_pty,
             commands::terminal::resize_pty,
             commands::terminal::kill_pty,
             commands::terminal::get_pty_scrollback,
+            commands::terminal::respond_to_blocked_prompt,
+            commands::terminal::get_session_idle_status,
+            commands::terminal::list_all_terminal_idle_statuses,
+            commands::terminal::set_session_standby,
+            commands::terminal::send_macos_notification,
             // Comandos de Personas de Agentes (.md) & Modelos
             commands::agents::list_discovered_agents,
             commands::agents::get_agent_details,

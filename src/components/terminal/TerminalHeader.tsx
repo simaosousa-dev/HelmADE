@@ -436,6 +436,8 @@ export const TerminalHeader: React.FC<TerminalHeaderProps> = ({
                       waiting: 'running',
                       completed: 'idle',
                       error: 'idle',
+                      standby: 'running',
+                      blocked: 'running',
                     };
                     onStatusChange(nextStatus[status] ?? 'idle');
                   }

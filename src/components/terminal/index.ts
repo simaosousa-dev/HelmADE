@@ -8,3 +8,6 @@ export * from './TerminalHeader';
 export { default as TerminalHeader } from './TerminalHeader';
 export * from './ModelSelectorDropdown';
 export { default as ModelSelectorDropdown } from './ModelSelectorDropdown';
+export * from './BlockedPromptBanner';
+export { default as BlockedPromptBanner } from './BlockedPromptBanner';
+

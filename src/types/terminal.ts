@@ -18,8 +18,39 @@ export interface TerminalDimension {
  * - Em Espera: 'idle' | 'waiting' (aguardar input ou comando)
  * - Concluído: 'completed' (processo terminou com sucesso)
  * - Erro: 'error' (processo terminou com falha ou erro de PTY)
+ * - Standby: 'standby' (processo ocioso em segundo plano com poupança de CPU)
+ * - Bloqueado: 'blocked' (processo interativo bloqueado à espera de input humano)
  */
-export type TerminalStatus = 'idle' | 'running' | 'completed' | 'error' | 'active' | 'waiting';
+export type TerminalStatus =
+  | 'idle'
+  | 'running'
+  | 'completed'
+  | 'error'
+  | 'active'
+  | 'waiting'
+  | 'standby'
+  | 'blocked';
+
+export type PromptType = 'yes_no' | 'password' | 'input';
+
+export interface BlockedPromptInfo {
+  sessionId: string;
+  promptText: string;
+  promptType: PromptType;
+  defaultChoice?: string;
+  suggestedOptions: string[];
+  timestamp: number;
+}
+
+export type SessionIdleState = 'active' | 'idle' | 'standby' | 'blocked';
+
+export interface SessionStatusPayload {
+  sessionId: string;
+  state: SessionIdleState;
+  blockedPrompt?: BlockedPromptInfo | null;
+  lastActiveAt: number;
+}
+
 
 /**
  * Paleta de cores semânticas Apple HIG para os painéis de terminal.
