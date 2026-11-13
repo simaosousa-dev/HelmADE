@@ -71,6 +71,11 @@ pub fn detect_binaries(binaries: &[String]) -> Result<HashMap<String, bool>, Str
 
 #[tauri::command]
 pub fn detect_agent_clis(binaries: Vec<String>) -> Result<HashMap<String, bool>, String> {
+    // End-to-end tests replace every agent CLI with a stub, so all of them count as installed.
+    #[cfg(feature = "e2e-bridge")]
+    if crate::e2e_bridge::agent_stub().is_some() {
+        return Ok(binaries.into_iter().map(|name| (name, true)).collect());
+    }
     detect_binaries(&binaries)
 }
 

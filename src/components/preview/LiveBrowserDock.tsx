@@ -302,6 +302,7 @@ export const LiveBrowserDock: React.FC<LiveBrowserDockProps> = ({
               )}
 
               <iframe
+                data-testid="preview-frame"
                 ref={iframeRef}
                 key={reloadKey}
                 src={currentUrl}

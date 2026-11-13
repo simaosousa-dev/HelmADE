@@ -284,6 +284,7 @@ export const TeamWire: React.FC<TeamWireProps> = ({ className = '', onFocusAgent
             return (
               <div
                 key={msg.id}
+                data-testid="wire-message"
                 onClick={() => {
                   setHighlightedMessage(isHighlighted ? null : msg.id);
                   if (msg.senderId !== 'user') handleFocusAgent(msg.senderId);

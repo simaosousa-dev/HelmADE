@@ -60,3 +60,7 @@ worktrees/
 
 # Superpowers / SDD workspaces (git-ignored scratch)
 .superpowers/
+
+# Playwright
+test-results/
+playwright-report/

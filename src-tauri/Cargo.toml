@@ -9,6 +9,10 @@ edition = "2021"
 name = "helmade_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# Test-only HTTP bridge so Playwright can drive the real backend (see docs/adr 0012). Never enabled in release builds.
+e2e-bridge = ["dep:tiny_http"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 cc = "1.0"
@@ -24,6 +28,7 @@ portable-pty = "0.8"
 regex = "1"
 libc = "0.2"
 tauri-plugin-global-shortcut = "2"
+tiny_http = { version = "0.12", optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "0.6", features = ["std"] }

@@ -226,6 +226,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
             return (
               <button
                 key={file.path}
+                data-testid={`diff-file-${file.path}`}
                 type="button"
                 onClick={() => onSelectFile(file)}
                 className={`w-full text-left px-3 py-2.5 transition-colors flex items-center justify-between gap-2 group ${

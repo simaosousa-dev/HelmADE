@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "test": "vitest run",
     "typecheck": "tsc -b",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "cargo build --features e2e-bridge && playwright test"
   },
   "commitlint": {
     "extends": [
@@ -27,6 +28,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/vite": "^4",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.0.0",

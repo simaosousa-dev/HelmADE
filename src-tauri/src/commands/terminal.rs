@@ -83,6 +83,8 @@ pub fn spawn_pty(
     env: Option<HashMap<String, String>>,
 ) -> HelmResult<()> {
     validate_id(&session_id).map_err(HelmError::invalid)?;
+    #[cfg(feature = "e2e-bridge")]
+    let command = command.map(crate::e2e_bridge::stub_agent_command);
     let opts = SpawnOptions {
         session_id,
         cwd,

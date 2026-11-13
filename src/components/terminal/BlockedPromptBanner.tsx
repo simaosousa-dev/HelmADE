@@ -129,6 +129,7 @@ export const BlockedPromptBanner: React.FC<BlockedPromptBannerProps> = ({
               <button
                 type="button"
                 onClick={() => handleQuickChoice('y')}
+                data-testid={`blocked-prompt-yes-${sessionId}`}
                 title="Responder Sim (Atalho: Tecla Y ou Enter se default)"
                 className={`min-h-[44px] min-w-[44px] px-3.5 py-1.5 rounded-md text-xs font-semibold tracking-tight transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer select-none active:scale-95 ${
                   isYDefault

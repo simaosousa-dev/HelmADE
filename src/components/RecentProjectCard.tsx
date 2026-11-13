@@ -30,6 +30,7 @@ export const RecentProjectCard: React.FC<RecentProjectCardProps> = ({
       role="button"
       tabIndex={0}
       onClick={() => onSelect(project)}
+      data-testid={`project-card-${project.name}`}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();

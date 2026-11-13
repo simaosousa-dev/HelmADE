@@ -4,6 +4,8 @@ pub mod browser;
 pub mod cli;
 pub mod commands;
 pub mod db;
+#[cfg(feature = "e2e-bridge")]
+pub mod e2e_bridge;
 pub mod error;
 pub mod git;
 pub mod network;
@@ -121,6 +123,9 @@ pub fn run() {
                 bin_dir,
                 cli,
             });
+
+            #[cfg(feature = "e2e-bridge")]
+            e2e_bridge::start(handle.clone());
 
             std::thread::spawn(move || loop {
                 std::thread::sleep(IDLE_SWEEP_INTERVAL);
