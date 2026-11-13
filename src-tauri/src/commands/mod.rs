@@ -1,11 +1,10 @@
 pub mod agents;
 pub mod browser;
 pub mod message;
-pub mod network;
 pub mod project;
+pub mod settings;
 pub mod shortcuts;
-pub mod symlink;
+pub mod swarm;
 pub mod terminal;
 pub mod voice;
 pub mod worktree;
-

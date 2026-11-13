@@ -1,66 +1,42 @@
-use crate::agents::protocol::A2AMessage;
-use crate::agents::router::MessageRouterState;
-use crate::commands::terminal::PtyState;
-use tauri::{AppHandle, State};
+use tauri::State;
 
-/// Despacha uma mensagem A2A através do router, emite o evento IPC "a2a://message"
-/// e opcionalmente espelha o conteúdo visualmente no PTY de destino se configurado.
+use super::project::DbHandle;
+use crate::agents::protocol::A2AMessage;
+use crate::agents::router::{Delivery, MessageRouterState, OutgoingMessage, Peer};
+use crate::error::HelmResult;
+use crate::security::ShieldHandle;
+
+/// Sends a message through the router: recorded, shown in Team Wire and delivered
+/// to the recipient's terminal. The same path the `helmade` CLI uses.
 #[tauri::command]
 pub fn send_a2a_message(
-    router_state: State<MessageRouterState>,
-    pty_state: State<PtyState>,
-    app_handle: AppHandle,
-    payload: A2AMessage,
-    mirror_to_pty: Option<bool>,
-) -> Result<A2AMessage, String> {
-    // 1. Processa e despacha a mensagem via MessageRouter
-    let dispatched = router_state.dispatch(payload, Some(&app_handle))?;
-
-    // 2. Se o espelhamento visual no PTY estiver solicitado (ou se houver mirror registado)
-    let should_mirror = mirror_to_pty.unwrap_or(false);
-    if should_mirror {
-        if let Some(pty_session_id) = router_state.get_pty_mirror_for_agent(&dispatched.recipient_id) {
-            let mirror_text = format!(
-                "\r\n\x1b[36m[A2A Message from @{}]\x1b[0m {}\r\n",
-                dispatched.sender_id, dispatched.content
-            );
-            let _ = pty_state.write(&pty_session_id, &mirror_text);
-        }
-    }
-
-    Ok(dispatched)
+    delivery: State<'_, Delivery>,
+    message: OutgoingMessage,
+) -> HelmResult<A2AMessage> {
+    delivery.deliver(message)
 }
 
-/// Recupera o histórico de mensagens A2A (global ou filtrado por ID de conversa).
+/// Persisted Team Wire history of a swarm, oldest first.
 #[tauri::command]
 pub fn get_a2a_history(
-    router_state: State<MessageRouterState>,
-    conversation_id: Option<String>,
+    db: State<'_, DbHandle>,
+    shield: State<'_, ShieldHandle>,
+    swarm_id: String,
     limit: Option<usize>,
-) -> Result<Vec<A2AMessage>, String> {
-    router_state.get_history(conversation_id.as_deref(), limit)
-}
-
-/// Regista o mapeamento entre um agente e uma sessão PTY para espelhamento visual no terminal.
-#[tauri::command]
-pub fn register_a2a_pty_mirror(
-    router_state: State<MessageRouterState>,
-    agent_id: String,
-    pty_session_id: String,
-) -> Result<(), String> {
-    if agent_id.trim().is_empty() || pty_session_id.trim().is_empty() {
-        return Err("agent_id e pty_session_id não podem ser vazios".to_string());
+) -> HelmResult<Vec<A2AMessage>> {
+    let mut messages = db.list_a2a_messages(&swarm_id, limit.unwrap_or(200).min(1000))?;
+    for message in &mut messages {
+        message.content = shield.apply(&message.content);
     }
-    router_state.register_pty_mirror(&agent_id, &pty_session_id);
-    Ok(())
+    Ok(messages)
 }
 
-/// Remove o registo de espelhamento visual no terminal para um agente.
+/// Declares who is in a swarm so messages can be addressed and delivered.
 #[tauri::command]
-pub fn unregister_a2a_pty_mirror(
-    router_state: State<MessageRouterState>,
-    agent_id: String,
-) -> Result<(), String> {
-    router_state.unregister_pty_mirror(&agent_id);
-    Ok(())
+pub fn register_swarm_peers(
+    router: State<'_, MessageRouterState>,
+    swarm_id: String,
+    peers: Vec<Peer>,
+) -> HelmResult<()> {
+    router.set_peers(&swarm_id, peers)
 }
