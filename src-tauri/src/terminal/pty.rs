@@ -92,12 +92,27 @@ fn decode_utf8(pending: &mut Vec<u8>, bytes: &[u8]) -> String {
     text
 }
 
-fn default_shell() -> String {
-    ["/bin/zsh", "/bin/bash"]
-        .into_iter()
-        .find(|path| std::path::Path::new(path).exists())
-        .unwrap_or("/bin/sh")
-        .to_string()
+/// Shells whose `-l`, `-i` and `-c` flags behave the way the launcher relies on.
+const KNOWN_SHELLS: &[&str] = &["zsh", "bash", "fish", "sh"];
+
+/// The user's login shell (`$SHELL`) when it is a known one, otherwise the system default.
+pub fn login_shell() -> String {
+    let from_env = std::env::var("SHELL").ok().filter(|shell| {
+        let path = std::path::Path::new(shell);
+        path.is_absolute()
+            && path.exists()
+            && path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| KNOWN_SHELLS.contains(&name))
+    });
+    from_env.unwrap_or_else(|| {
+        ["/bin/zsh", "/bin/bash"]
+            .into_iter()
+            .find(|path| std::path::Path::new(path).exists())
+            .unwrap_or("/bin/sh")
+            .to_string()
+    })
 }
 
 /// Signals the whole process group led by `pid` (the PTY child is a session leader).
@@ -180,7 +195,7 @@ impl PtySession {
             })
             .map_err(|e| format!("Falha ao abrir par PTY: {e}"))?;
 
-        let shell = opts.shell.clone().unwrap_or_else(default_shell);
+        let shell = opts.shell.clone().unwrap_or_else(login_shell);
         let mut cmd = CommandBuilder::new(&shell);
         // A login shell so PATH matches the user's terminal even when launched from Finder.
         match &opts.command {

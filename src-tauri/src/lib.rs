@@ -162,6 +162,7 @@ pub fn run() {
             commands::agents::list_discovered_agents,
             commands::agents::get_agent_details,
             commands::agents::check_ollama_status,
+            commands::agents::detect_agent_clis,
             // Team Wire (A2A)
             commands::message::send_a2a_message,
             commands::message::get_a2a_history,

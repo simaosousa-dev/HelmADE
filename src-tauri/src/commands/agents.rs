@@ -1,5 +1,6 @@
 use crate::agents::{get_agent_by_id, scan_agent_directories, AgentDefinition};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::Path;
@@ -29,6 +30,48 @@ pub fn get_agent_details(
     let path_ref = project_path.as_deref().map(Path::new);
     get_agent_by_id(&agent_id, path_ref)
         .ok_or_else(|| format!("Agente '{}' não foi encontrado", agent_id))
+}
+
+/// Marker printed for every binary found, so shell start-up noise cannot be mistaken for a result.
+const FOUND_MARKER: &str = "HELM_FOUND:";
+
+fn is_binary_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 32
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+/// Checks which executables exist on the PATH of the user's login shell (the same PATH
+/// the panels get), so the launcher only offers agent CLIs that can actually start.
+pub fn detect_binaries(binaries: &[String]) -> Result<HashMap<String, bool>, String> {
+    if binaries.len() > 16 || !binaries.iter().all(|name| is_binary_name(name)) {
+        return Err("Lista de executáveis inválida".to_string());
+    }
+    let script = format!(
+        "for b in {}; do command -v \"$b\" >/dev/null 2>&1 && echo \"{FOUND_MARKER}$b\"; done",
+        binaries.join(" ")
+    );
+    let output = std::process::Command::new(crate::terminal::pty::login_shell())
+        .args(["-lic", &script])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .map_err(|e| format!("Falha ao consultar a shell de login: {e}"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let found: Vec<&str> = stdout
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix(FOUND_MARKER))
+        .collect();
+    Ok(binaries
+        .iter()
+        .map(|name| (name.clone(), found.contains(&name.as_str())))
+        .collect())
+}
+
+#[tauri::command]
+pub fn detect_agent_clis(binaries: Vec<String>) -> Result<HashMap<String, bool>, String> {
+    detect_binaries(&binaries)
 }
 
 #[tauri::command]
@@ -126,6 +169,21 @@ pub fn check_ollama_status(endpoint: Option<String>) -> Result<OllamaStatus, Str
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detect_binaries_reports_present_and_missing_executables() {
+        let names = vec!["sh".to_string(), "definitely-not-installed-xyz".to_string()];
+        let found = detect_binaries(&names).expect("detect");
+        assert_eq!(found.get("sh"), Some(&true));
+        assert_eq!(found.get("definitely-not-installed-xyz"), Some(&false));
+    }
+
+    #[test]
+    fn detect_binaries_rejects_names_that_could_inject_shell() {
+        for bad in ["a;b", "$(x)", "a b", "", "../x"] {
+            assert!(detect_binaries(&[bad.to_string()]).is_err(), "accepted {bad:?}");
+        }
+    }
 
     #[test]
     fn test_check_ollama_status_offline() {
