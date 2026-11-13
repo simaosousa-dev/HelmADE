@@ -140,13 +140,10 @@ export const TeamWire: React.FC<TeamWireProps> = ({ className = '', onFocusAgent
   const {
     messages,
     peers,
-    isMirroringEnabled,
     highlightedMessageId,
     activeExchangeAgentIds,
     toggleWire,
-    setMirroringEnabled,
     setHighlightedMessage,
-    clearMessages,
   } = useA2AMessages();
 
   const [filterQuery, setFilterQuery] = useState('');
@@ -218,43 +215,6 @@ export const TeamWire: React.FC<TeamWireProps> = ({ className = '', onFocusAgent
 
         {/* Controlos Rápidos */}
         <div className="flex items-center gap-1.5">
-          {/* Alternar Espelhamento PTY */}
-          <button
-            type="button"
-            onClick={() => setMirroringEnabled(!isMirroringEnabled)}
-            title={
-              isMirroringEnabled
-                ? 'Espelhamento nos terminais ATIVADO (clique para pausar)'
-                : 'Espelhamento nos terminais PAUSADO (clique para ativar)'
-            }
-            aria-pressed={isMirroringEnabled}
-            className={`min-h-[44px] min-w-[44px] px-2.5 py-1 rounded-lg text-[11px] font-medium border flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none ${
-              isMirroringEnabled
-                ? 'bg-cyan-500/15 border-cyan-500/35 text-cyan-300'
-                : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
-            }`}
-          >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isMirroringEnabled ? 'bg-cyan-400 animate-pulse' : 'bg-white/30'
-              }`}
-            />
-            <span className="hidden sm:inline">Espelhar PTY</span>
-          </button>
-
-          {/* Limpar Histórico */}
-          <button
-            type="button"
-            onClick={clearMessages}
-            title="Limpar feed de mensagens"
-            aria-label="Limpar histórico de mensagens"
-            className="min-h-[44px] min-w-[44px] p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-
           {/* Fechar Painel */}
           <button
             type="button"
