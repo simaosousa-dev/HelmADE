@@ -52,6 +52,11 @@ export function generateSwarmId(random: () => number = Math.random): string {
   return `s${suffix}`;
 }
 
+/** Sessions being closed on purpose: their exit must never be mistaken for a failed resume. */
+const closingSessions = new Set<string>();
+/** Restores in flight, so two callers for the same project share one (React StrictMode mounts twice). */
+const restoresInFlight = new Map<string, Promise<RestoreReport>>();
+
 let installedClis: Promise<Record<string, boolean>> | null = null;
 
 /** Which agent CLIs exist on the user's login-shell PATH (cached for the session). */
@@ -276,8 +281,8 @@ function restartIfResumeFails(project: Project, swarm: Swarm): void {
   };
   terminalService
     .onExit(({ sessionId, exitCode }) => {
-      if (!resumed.delete(sessionId) || exitCode === 0) return;
-      const panel = swarm.panels.find((p) => p.worktreeId === sessionId);
+      if (!resumed.delete(sessionId) || exitCode === 0 || closingSessions.has(sessionId)) return;
+      const panel = swarmStore.findPanel(sessionId)?.panel;
       if (!panel) return;
       spawnPanel(project, swarm, panel, false).catch((error: unknown) => {
         swarmStore.setPanelStatus(sessionId, 'error');
@@ -295,7 +300,15 @@ function restartIfResumeFails(project: Project, swarm: Swarm): void {
  * Restores the project's swarms after an app restart: tabs, layout and panels come back,
  * and every terminal is started again inside its existing worktree.
  */
-export async function restoreProjectSwarms(project: Project): Promise<RestoreReport> {
+export function restoreProjectSwarms(project: Project): Promise<RestoreReport> {
+  const inFlight = restoresInFlight.get(project.id);
+  if (inFlight) return inFlight;
+  const restore = restoreSwarms(project).finally(() => restoresInFlight.delete(project.id));
+  restoresInFlight.set(project.id, restore);
+  return restore;
+}
+
+async function restoreSwarms(project: Project): Promise<RestoreReport> {
   const warnings: string[] = [];
   const [saved, activeId] = await Promise.all([
     swarmService.list(project.id),
@@ -329,6 +342,16 @@ export async function restoreProjectSwarms(project: Project): Promise<RestoreRep
   };
 }
 
+async function releasePanel(project: Project, sessionId: string, deleteBranch: boolean): Promise<void> {
+  closingSessions.add(sessionId);
+  try {
+    await swarmService.releaseWorkspace(project.path, sessionId, deleteBranch);
+  } finally {
+    // The exit event of the killed terminal arrives shortly after the command returns.
+    setTimeout(() => closingSessions.delete(sessionId), RESUME_GRACE_MS);
+  }
+}
+
 /** Closes one panel: its terminal, port and worktree go away (and its branch when asked). */
 export async function closePanel(
   project: Project,
@@ -336,7 +359,7 @@ export async function closePanel(
   sessionId: string,
   deleteBranch: boolean
 ): Promise<void> {
-  await swarmService.releaseWorkspace(project.path, sessionId, deleteBranch);
+  await releasePanel(project, sessionId, deleteBranch);
   swarmStore.removePanel(swarmId, sessionId);
   const swarm = swarmStore.getState().swarms.find((s) => s.id === swarmId);
   if (swarm && swarm.panels.length === 0) {
@@ -355,7 +378,7 @@ export async function closeSwarm(
   const swarm = swarmStore.getState().swarms.find((s) => s.id === swarmId);
   if (!swarm) return;
   for (const panel of swarm.panels) {
-    await swarmService.releaseWorkspace(project.path, panel.worktreeId, deleteBranches);
+    await releasePanel(project, panel.worktreeId, deleteBranches);
   }
   await swarmService.delete(swarmId);
   swarmStore.removeSwarm(swarmId);
