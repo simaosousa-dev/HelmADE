@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../lib/ipc';
 import type { Project, CreateProjectPayload } from '../types/project';
 
 export const projectService = {

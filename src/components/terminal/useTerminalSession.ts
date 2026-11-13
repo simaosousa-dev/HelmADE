@@ -57,23 +57,28 @@ export function useTerminalSession(
     // 4. Montagem no elemento do DOM
     terminal.open(container);
 
-    try {
+    // Ajusta o terminal ao contentor e propaga as dimensões ao PTY. Um contentor ainda sem
+    // tamanho (painel oculto) ou um PTY que ainda não arrancou não são erros: o próximo
+    // redimensionamento volta a tentar.
+    const syncSize = () => {
+      if (container.clientWidth === 0 || container.clientHeight === 0) return;
       fitAddon.fit();
-      terminalService
-        .resizePty(sessionId, terminal.cols, terminal.rows)
-        .catch(() => {});
-    } catch {}
+      terminalService.resizePty(sessionId, terminal.cols, terminal.rows).catch((err: unknown) => {
+        console.debug('[useTerminalSession] PTY ainda não disponível para redimensionar:', err);
+      });
+    };
+    syncSize();
 
-    // 5. Hidratação do histórico de scrollback acumulado no Rust
+    // 5. Reposição do fluxo bruto acumulado no Rust (cores, cursor e ecrãs completos incluídos)
     terminalService
       .getScrollback(sessionId)
-      .then((lines) => {
-        if (!isDisposed && lines && lines.length > 0) {
-          terminal.write(lines.join('\r\n') + '\r\n');
+      .then((scrollback) => {
+        if (!isDisposed && scrollback) {
+          terminal.write(scrollback);
         }
       })
-      .catch((err) => {
-        console.warn('[useTerminalSession] Falha ao carregar scrollback prévio:', err);
+      .catch((err: unknown) => {
+        console.debug('[useTerminalSession] Sem scrollback prévio para esta sessão:', err);
       });
 
     // 6. Streaming bidirecional: entrada do utilizador para o PTY
@@ -105,13 +110,7 @@ export function useTerminalSession(
     const resizeObserver = new ResizeObserver(() => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (!isDisposed && terminalRef.current && fitAddonRef.current) {
-          try {
-            fitAddonRef.current.fit();
-            const { cols, rows } = terminalRef.current;
-            terminalService.resizePty(sessionId, cols, rows).catch(() => {});
-          } catch {}
-        }
+        if (!isDisposed) syncSize();
       }, 60);
     });
 
@@ -149,9 +148,7 @@ export function useTerminalSession(
   }, []);
 
   const fit = useCallback(() => {
-    try {
-      fitAddonRef.current?.fit();
-    } catch {}
+    fitAddonRef.current?.fit();
   }, []);
 
   return {

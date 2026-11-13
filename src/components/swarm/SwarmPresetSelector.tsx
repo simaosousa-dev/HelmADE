@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
+  SWARM_PRESETS,
   type SwarmPreset,
   type PresetPanelConfig,
 } from '../../config/swarmPresets';
 import { useSwarmStore } from '../../stores/useSwarmStore';
-import { launchSwarmPreset } from '../../services/swarmLauncher';
+import { launchSwarmPreset, type LaunchReport } from '../../services/swarmLauncher';
+import type { Project } from '../../types/project';
 import { agentConfigStore } from '../../stores/useAgentConfigStore';
 import type { TerminalPanelColor, AgentRoleType } from '../../types/terminal';
 import { AGENT_ROLE_MAP } from '../../types/terminal';
@@ -13,7 +15,9 @@ import { AgentModelConfigModal } from './AgentModelConfigModal';
 export interface SwarmPresetSelectorProps {
   isOpen: boolean;
   onClose: () => void;
-  projectPath: string;
+  project: Project;
+  /** Called once the swarm is running, with any non-fatal warnings. */
+  onLaunched?: (report: LaunchReport) => void;
   className?: string;
 }
 
@@ -123,20 +127,16 @@ function RolePill({ panel }: { panel: PresetPanelConfig }) {
 export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
   isOpen,
   onClose,
-  projectPath,
+  project,
+  onLaunched,
   className = '',
 }) => {
-  const { presets, isLaunching, lastError, activePresetId } = useSwarmStore();
-  const [selectedPresetId, setSelectedPresetId] = useState<string>(
-    activePresetId || presets[0]?.id || 'trio-fullstack'
-  );
+  const presets = SWARM_PRESETS;
+  const { isLaunching, lastError } = useSwarmStore();
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(presets[0].id);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-
-  useEffect(() => {
-    if (activePresetId) {
-      setSelectedPresetId(activePresetId);
-    }
-  }, [activePresetId]);
+  const [missionName, setMissionName] = useState('');
+  const [autoApprove, setAutoApprove] = useState(false);
 
   // Fechar com a tecla Escape
   useEffect(() => {
@@ -165,10 +165,15 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
           agentConfigStore.setModelForPanel(panelId, modelId);
         }
       }
-      await launchSwarmPreset(presetToLaunch, projectPath);
+      const report = await launchSwarmPreset(presetToLaunch, project, {
+        name: missionName,
+        autoApprove,
+      });
+      setMissionName('');
+      onLaunched?.(report);
       onClose();
     } catch {
-      // O erro é gravado no useSwarmStore para feedback ao utilizador
+      // O launcher já gravou a mensagem no swarmStore; o modal fica aberto a mostrá-la.
     }
   };
 
@@ -239,7 +244,6 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {presets.map((preset) => {
                 const isSelected = preset.id === selectedPresetId;
-                const isActiveSwarm = preset.id === activePresetId;
 
                 return (
                   <div
@@ -276,11 +280,6 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
                             <h3 className="text-[15px] font-semibold text-white/95 tracking-tight">
                               {preset.name}
                             </h3>
-                            {isActiveSwarm && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                Ativo
-                              </span>
-                            )}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[11px] font-mono text-white/60">
@@ -382,10 +381,34 @@ export const SwarmPresetSelector: React.FC<SwarmPresetSelectorProps> = ({
           {/* Rodapé com Botão de Ação Apple HIG (mínimo 44x44px) */}
           <div className="h-16 border-t border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#161618]">
             <div className="text-[12px] text-white/60">
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="text"
+                  value={missionName}
+                  onChange={(e) => setMissionName(e.target.value)}
+                  maxLength={60}
+                  placeholder={currentPreset?.name ?? 'Nome da missão'}
+                  aria-label="Nome da missão"
+                  data-testid="swarm-mission-name"
+                  className="min-h-[44px] w-56 px-3 rounded-xl bg-white/5 border border-white/10 text-[13px] text-white placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:outline-none"
+                />
+                <label className="min-h-[44px] flex items-center gap-2 text-[12px] text-white/75 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoApprove}
+                    onChange={(e) => setAutoApprove(e.target.checked)}
+                    data-testid="swarm-auto-approve"
+                    className="w-4 h-4 accent-blue-500"
+                  />
+                  <span title="Os agentes executam comandos sem pedir confirmação (ex.: --dangerously-skip-permissions).">
+                    Aprovação automática
+                  </span>
+                </label>
+              </div>
               {currentPreset && (
                 <span>
-                  Lançará <strong className="text-white/90">{currentPreset.name}</strong> em layout{' '}
-                  <strong className="text-white/90 font-mono">{currentPreset.layout}</strong>.
+                  Cada agente de <strong className="text-white/90">{currentPreset.name}</strong> recebe o seu próprio
+                  worktree, branch e porta.
                 </span>
               )}
             </div>

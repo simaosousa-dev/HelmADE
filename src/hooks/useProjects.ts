@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { errorMessage } from '../lib/ipc';
 import { open } from '@tauri-apps/plugin-dialog';
 import { projectService } from '../services/projectService';
 import type { Project } from '../types/project';
@@ -16,7 +17,7 @@ export function useProjects() {
       setProjects(list);
     } catch (err) {
       console.error('Falha ao carregar projetos recentes:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -62,7 +63,7 @@ export function useProjects() {
       return await addProjectByPath(selected);
     } catch (err) {
       console.error('Erro ao abrir diálogo de seleção:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
       return null;
     }
   }, [addProjectByPath]);
@@ -74,7 +75,7 @@ export function useProjects() {
         setProjects((prev) => prev.filter((p) => p.id !== id));
       } catch (err) {
         console.error('Erro ao remover projeto:', err);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
       }
     },
     []

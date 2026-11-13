@@ -1,5 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { invoke, listen, type UnlistenFn } from '../lib/ipc';
 import type {
   TranscriptionEvent,
   VoiceEngineStatus,
@@ -64,9 +63,7 @@ export const voiceService = {
   async onTranscription(
     callback: (event: TranscriptionEvent) => void
   ): Promise<UnlistenFn> {
-    return listen<TranscriptionEvent>('helmvoice://transcription', (e) => {
-      callback(e.payload);
-    });
+    return listen<TranscriptionEvent>('helmvoice://transcription', callback);
   },
 
   /**
@@ -75,9 +72,7 @@ export const voiceService = {
   async onStatusChange(
     callback: (status: VoiceEngineStatus) => void
   ): Promise<UnlistenFn> {
-    return listen<VoiceEngineStatus>('helmvoice://status', (e) => {
-      callback(e.payload);
-    });
+    return listen<VoiceEngineStatus>('helmvoice://status', callback);
   },
 
   /**
@@ -86,8 +81,6 @@ export const voiceService = {
   async onError(
     callback: (error: VoiceErrorPayload) => void
   ): Promise<UnlistenFn> {
-    return listen<VoiceErrorPayload>('helmvoice://error', (e) => {
-      callback(e.payload);
-    });
+    return listen<VoiceErrorPayload>('helmvoice://error', callback);
   },
 };

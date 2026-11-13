@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { errorMessage } from '../lib/ipc';
 import type { DiffSummary, DiffFile, FileDiffDetail, MergeResult, MergeStrategy } from '../types/diff';
 import { gitDiffService } from '../services/gitDiffService';
 
@@ -29,7 +30,7 @@ export function useGitDiff(repoPath: string, swarmId: string, baseBranch?: strin
         setFileDetail(null);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       setError(msg);
     } finally {
       setLoading(false);
@@ -55,7 +56,7 @@ export function useGitDiff(repoPath: string, swarmId: string, baseBranch?: strin
       })
       .catch((err: unknown) => {
         if (isMounted) {
-          const msg = err instanceof Error ? err.message : String(err);
+          const msg = errorMessage(err);
           setFileDetail({ path: selectedFile.path, patch: `Erro ao carregar patch: ${msg}` });
         }
       })
@@ -91,19 +92,19 @@ export function useGitDiff(repoPath: string, swarmId: string, baseBranch?: strin
         setMergeResult(result);
         return result;
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        const failResult: MergeResult = {
+        // A rejected command is not a merge conflict: show it as an error, not as conflicting files.
+        const msg = errorMessage(err);
+        setMergeResult(null);
+        setError(msg);
+        return {
           success: false,
           strategy,
           merged_branch: `helm/swarm-${swarmId}`,
           target_branch: baseBranch || 'main',
           commit_sha: null,
-          conflicts: [msg],
+          conflicts: [],
           message: msg,
         };
-        setMergeResult(failResult);
-        setError(msg);
-        return failResult;
       } finally {
         setMerging(false);
       }
@@ -118,7 +119,7 @@ export function useGitDiff(repoPath: string, swarmId: string, baseBranch?: strin
       setError(null);
       await fetchDiff();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       setError(msg);
     }
   }, [repoPath, fetchDiff]);

@@ -216,6 +216,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         <div className="flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea
+              data-prompt-input
               ref={textareaRef}
               rows={1}
               value={draftPrompt}

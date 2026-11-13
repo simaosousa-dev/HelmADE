@@ -12,6 +12,8 @@ import type { TerminalPanelColor } from '../../types/terminal';
 export interface TiledTerminalGridProps {
   className?: string;
   onAddPanel?: () => void;
+  /** Asked to close a panel (its terminal and worktree). Receives the PTY session id. */
+  onClosePanel?: (sessionId: string) => void;
 }
 
 const GRID_LAYOUT_CLASSES: Record<GridLayoutType, string> = {
@@ -42,6 +44,7 @@ const PANEL_ACTIVE_BORDER_CLASSES: Record<TerminalPanelColor, string> = {
 export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
   className = '',
   onAddPanel,
+  onClosePanel,
 }) => {
   const {
     layout,
@@ -50,7 +53,6 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
     maximizedPanelId,
     setActivePanelId,
     toggleMaximizePanel,
-    removePanel,
     updatePanelTitle,
     updatePanelColor,
     updatePanelStatus,
@@ -81,7 +83,7 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
 
       const currentPanels = gridLayoutStore.getState().panels;
       const found = currentPanels.find(
-        (p) => p.agentId === panelId || p.id === panelId
+        (p) => p.key === panelId || p.id === panelId || p.agentId === panelId
       );
 
       if (found) {
@@ -107,55 +109,6 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
     };
   }, [setActivePanelId]);
 
-  // Gestor global de atalhos de teclado Apple HIG com fase de captura
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+Enter (macOS) ou Ctrl+Enter: Zoom / Maximizar painel ativo
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        const state = gridLayoutStore.getState();
-        const targetId = state.maximizedPanelId ?? state.activePanelId;
-        if (targetId) {
-          e.preventDefault();
-          e.stopPropagation();
-          gridLayoutStore.toggleMaximizePanel(targetId);
-        }
-        return;
-      }
-
-      // Escape: Restaurar grelha se maximizado
-      if (e.key === 'Escape') {
-        const state = gridLayoutStore.getState();
-        if (state.maximizedPanelId) {
-          e.preventDefault();
-          e.stopPropagation();
-          gridLayoutStore.toggleMaximizePanel(state.maximizedPanelId);
-        }
-        return;
-      }
-
-      // Cmd+Option+ArrowRight ou Ctrl+Option+ArrowRight: Próximo painel
-      if ((e.metaKey || e.ctrlKey) && e.altKey && e.key === 'ArrowRight') {
-        e.preventDefault();
-        e.stopPropagation();
-        gridLayoutStore.cycleNextPanel();
-        return;
-      }
-
-      // Cmd+Option+ArrowLeft ou Ctrl+Option+ArrowLeft: Painel anterior
-      if ((e.metaKey || e.ctrlKey) && e.altKey && e.key === 'ArrowLeft') {
-        e.preventDefault();
-        e.stopPropagation();
-        gridLayoutStore.cyclePrevPanel();
-        return;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown, { capture: true });
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown, { capture: true });
-    };
-  }, []);
-
   // Estado vazio quando não existem painéis criados
   if (panels.length === 0) {
     return (
@@ -173,9 +126,9 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-[14px] font-semibold text-white/90 tracking-tight">Grelha de Terminais Vazia</h3>
+        <h3 className="text-[14px] font-semibold text-white/90 tracking-tight">Nenhum enxame ativo</h3>
         <p className="text-[12px] text-white/50 max-w-sm mt-1 mb-5 leading-relaxed">
-          Nenhum painel ativo na grelha. Adicione terminais para monitorizar múltiplos agentes em tempo real.
+          Lança um enxame para pôr vários agentes a trabalhar em paralelo, cada um no seu worktree isolado.
         </p>
         {onAddPanel && (
           <button
@@ -186,7 +139,7 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Criar Novo Terminal
+            Lançar Enxame
           </button>
         )}
       </div>
@@ -208,9 +161,7 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
         const isVisible = isThisMaximized || isVisibleInGrid;
         const isActive = activePanelId === panel.id;
         const isHighlighted = panel.id === highlightedPanelId;
-        const isA2AActive =
-          (panel.agentId && activeExchangeAgentIds.has(panel.agentId)) ||
-          activeExchangeAgentIds.has(panel.id);
+        const isA2AActive = activeExchangeAgentIds.has(panel.id);
         const panelColor = panel.color ?? 'blue';
         const activeBorderClass = PANEL_ACTIVE_BORDER_CLASSES[panelColor] ?? PANEL_ACTIVE_BORDER_CLASSES.blue;
 
@@ -250,7 +201,7 @@ export const TiledTerminalGrid: React.FC<TiledTerminalGridProps> = ({
               onColorChange={(newColor) => updatePanelColor(panel.id, newColor)}
               onStatusChange={(newStatus) => updatePanelStatus(panel.id, newStatus)}
               onToggleMaximize={() => toggleMaximizePanel(panel.id)}
-              onClose={() => removePanel(panel.id)}
+              onClose={() => onClosePanel?.(panel.id)}
             />
 
             {/* Contentor do Terminal Vivo (@xterm) com Preservação de DOM */}

@@ -1,5 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { invoke, listen, type UnlistenFn } from '../lib/ipc';
 import type { DetectedDevServer } from '../types/preview';
 
 export const previewService = {
@@ -34,8 +33,6 @@ export const previewService = {
   async onDevServerDetected(
     callback: (server: DetectedDevServer) => void
   ): Promise<UnlistenFn> {
-    return listen<DetectedDevServer>('devserver-detected', (event) => {
-      callback(event.payload);
-    });
+    return listen<DetectedDevServer>('devserver-detected', callback);
   },
 };

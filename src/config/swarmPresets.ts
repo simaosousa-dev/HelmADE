@@ -1,4 +1,4 @@
-import type { GridLayoutType } from '../stores/useGridLayoutStore';
+import type { GridLayoutType, PanelKind } from '../types/swarm';
 import type { TerminalPanelColor, TerminalStatus, AgentRoleType } from '../types/terminal';
 
 /**
@@ -13,6 +13,8 @@ export interface PresetPanelConfig {
   initialStatus: TerminalStatus;
   envVars: Record<string, string>;
   initialPrompt?: string;
+  /** `shell` opens a plain terminal instead of an agent CLI. Defaults to `agent`. */
+  kind?: PanelKind;
 }
 
 /**
@@ -29,7 +31,8 @@ export interface SwarmPreset {
 }
 
 /**
- * Catálogo dos 5 modelos de enxame oficiais alinhados aos Trios de Ataque Oficiais:
+ * Catálogo dos modelos de enxame oficiais:
+ * 0. Quarteto Feature (layout: 2x2, 4 agentes)
  * 1. Trio Full-Stack Feature (layout: 2x3, 6 painéis)
  * 2. Trio UI/UX & Native Desktop (layout: 2x2, 3 painéis)
  * 3. Trio Hotfix & Estabilidade (layout: 2x2, 3 painéis)
@@ -37,6 +40,57 @@ export interface SwarmPreset {
  * 5. Cockpit Solo / Exploratório (layout: 1x2, 2 painéis)
  */
 export const SWARM_PRESETS: SwarmPreset[] = [
+  {
+    id: 'quartet-feature',
+    name: 'Quarteto Feature',
+    description:
+      'Equipa compacta para uma funcionalidade completa: um orquestrador que planeia e delega, implementação fullstack, interface e auditoria de qualidade, cada um no seu worktree.',
+    icon: 'rocket',
+    layout: '2x2',
+    badge: '4 Agentes · Feature',
+    panels: [
+      {
+        id: 'orchestrator',
+        title: 'Orchestrator',
+        agentId: 'orchestrator',
+        role: 'architect',
+        color: 'gold',
+        initialStatus: 'idle',
+        envVars: { HELM_SKILLS: 'agents,brainstorming,architectural-decision-record' },
+        initialPrompt: 'Planear a funcionalidade, decompor em tarefas e delegar aos especialistas do enxame.',
+      },
+      {
+        id: 'fullstack',
+        title: 'Fullstack Engineer',
+        agentId: 'fullstack-engineer',
+        role: 'fullstack',
+        color: 'blue',
+        initialStatus: 'idle',
+        envVars: { HELM_SKILLS: 'backend-patterns,test-driven-development,ponytail' },
+        initialPrompt: 'Implementar a lógica de negócio e integrações seguindo ciclos Red-Green de TDD.',
+      },
+      {
+        id: 'frontend',
+        title: 'Frontend UI',
+        agentId: 'frontend-design-specialist',
+        role: 'frontend',
+        color: 'purple',
+        initialStatus: 'idle',
+        envVars: { HELM_SKILLS: 'design-taste-frontend,react-patterns' },
+        initialPrompt: 'Construir a interface com componentes acessíveis e responsivos.',
+      },
+      {
+        id: 'qa',
+        title: 'QA & Integrity',
+        agentId: 'qa-security-auditor',
+        role: 'qa-security',
+        color: 'red',
+        initialStatus: 'idle',
+        envVars: { HELM_SKILLS: 'strict-type-verifier,security-review,e2e-playwright-testing' },
+        initialPrompt: 'Validar o trabalho da equipa com typecheck, testes e revisão de segurança.',
+      },
+    ],
+  },
   {
     id: 'trio-fullstack',
     name: 'Trio Full-Stack Feature',
@@ -321,6 +375,7 @@ export const SWARM_PRESETS: SwarmPreset[] = [
         role: 'custom',
         color: 'blue',
         initialStatus: 'idle',
+        kind: 'shell',
         envVars: {
           HELM_AGENT_ROLE: 'custom',
           HELM_AGENT_ID: 'terminal-sandbox',

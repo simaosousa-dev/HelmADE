@@ -27,6 +27,8 @@ export interface AIModelDefinition {
   description: string;
   costDescription: string;
   isLocal?: boolean;
+  /** Value passed to the agent CLI's model flag. Omitted → the CLI's own default model. */
+  cliModel?: string;
 }
 
 export const COGNITIVE_PROFILES: Record<CognitiveProfileId, CognitiveProfile> = {

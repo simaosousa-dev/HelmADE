@@ -1,9 +1,9 @@
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { invoke, listen, type UnlistenFn } from '../lib/ipc';
 import type {
   SpawnPtyOptions,
   BlockedPromptInfo,
   SessionStatusPayload,
+  PtyExitPayload,
 } from '../types/terminal.ts';
 
 export const terminalService = {
@@ -14,7 +14,7 @@ export const terminalService = {
     return invoke<void>('spawn_pty', {
       sessionId: options.sessionId,
       cwd: options.cwd,
-      shell: options.shell,
+      command: options.command,
       cols: options.cols,
       rows: options.rows,
       env: options.env,
@@ -45,17 +45,29 @@ export const terminalService = {
   /**
    * Obtém o histórico completo acumulado no ring-buffer circular em memória.
    */
-  async getScrollback(sessionId: string): Promise<string[]> {
-    return invoke<string[]>('get_pty_scrollback', { sessionId });
+  async getScrollback(sessionId: string): Promise<string> {
+    return invoke<string>('get_pty_scrollback', { sessionId });
+  },
+
+  /**
+   * Indica se o processo do terminal ainda está vivo.
+   */
+  async isAlive(sessionId: string): Promise<boolean> {
+    return invoke<boolean>('is_pty_alive', { sessionId });
+  },
+
+  /**
+   * Escuta o fim de qualquer processo de terminal (com o respetivo código de saída).
+   */
+  async onExit(callback: (payload: PtyExitPayload) => void): Promise<UnlistenFn> {
+    return listen<PtyExitPayload>('pty-exit', callback);
   },
 
   /**
    * Subscreve o stream reativo de saída em tempo real (stdout/stderr) via eventos Tauri IPC.
    */
   async onData(sessionId: string, callback: (chunk: string) => void): Promise<UnlistenFn> {
-    return listen<string>(`pty-output-${sessionId}`, (event) => {
-      callback(event.payload);
-    });
+    return listen<string>(`pty-output-${sessionId}`, callback);
   },
 
   /**
@@ -107,18 +119,14 @@ export const terminalService = {
    * Escuta alertas de prompt interativo bloqueado (y/N, password, etc.).
    */
   async onBlockedPrompt(callback: (info: BlockedPromptInfo) => void): Promise<UnlistenFn> {
-    return listen<BlockedPromptInfo>('pty-blocked-prompt', (event) => {
-      callback(event.payload);
-    });
+    return listen<BlockedPromptInfo>('pty-blocked-prompt', callback);
   },
 
   /**
    * Escuta desativação do estado de bloqueio quando o processo prossegue.
    */
   async onBlockedCleared(callback: (payload: { sessionId: string }) => void): Promise<UnlistenFn> {
-    return listen<{ sessionId: string }>('pty-blocked-cleared', (event) => {
-      callback(event.payload);
-    });
+    return listen<{ sessionId: string }>('pty-blocked-cleared', callback);
   },
 
   /**
@@ -129,9 +137,7 @@ export const terminalService = {
   ): Promise<UnlistenFn> {
     return listen<{ sessionId: string; state: string; isStandby: boolean }>(
       'pty-standby-changed',
-      (event) => {
-        callback(event.payload);
-      }
+      callback
     );
   },
 };

@@ -1,30 +1,43 @@
 import { useSyncExternalStore } from 'react';
-import type { TerminalPanelColor, TerminalStatus, AgentRoleType } from '../types/terminal';
+import type { AgentCliId } from '../config/agentClis';
+import type { GridLayoutType, PanelKind } from '../types/swarm';
+import type { AgentRoleType, TerminalPanelColor, TerminalStatus } from '../types/terminal';
+import { swarmStore, type SwarmStoreState } from './useSwarmStore';
 
-export type GridLayoutType = '1x1' | '1x2' | '2x2' | '2x3' | '3x3' | '4x4';
+export type { GridLayoutType };
 
+/** A panel as the grid renders it: the persisted swarm panel plus its runtime status. */
 export interface GridPanelConfig {
+  /** PTY session id (globally unique). */
   id: string;
   sessionId: string;
+  /** Panel key inside the swarm, used for A2A addressing. */
+  key: string;
   title: string;
-  agentId?: string;
-  agentRole?: AgentRoleType | string;
-  color?: TerminalPanelColor;
-  status?: TerminalStatus;
-  modelId?: string;
+  agentId: string;
+  agentRole: AgentRoleType;
+  color: TerminalPanelColor;
+  status: TerminalStatus;
+  modelId: string;
+  kind: PanelKind;
+  cli: AgentCliId | null;
+  branch: string;
+  port: number;
 }
 
 export interface GridLayoutState {
+  swarmId: string | null;
   layout: GridLayoutType;
   panels: GridPanelConfig[];
   activePanelId: string | null;
   maximizedPanelId: string | null;
 }
 
-/**
- * Retorna as dimensões (colunas, linhas e capacidade máxima de painéis) para um dado layout.
- */
-export function getLayoutDimensions(layout: GridLayoutType): { cols: number; rows: number; maxPanels: number } {
+export function getLayoutDimensions(layout: GridLayoutType): {
+  cols: number;
+  rows: number;
+  maxPanels: number;
+} {
   switch (layout) {
     case '1x1':
       return { cols: 1, rows: 1, maxPanels: 1 };
@@ -38,222 +51,115 @@ export function getLayoutDimensions(layout: GridLayoutType): { cols: number; row
       return { cols: 3, rows: 3, maxPanels: 9 };
     case '4x4':
       return { cols: 4, rows: 4, maxPanels: 16 };
-    default:
-      return { cols: 2, rows: 2, maxPanels: 4 };
   }
 }
 
-let state: GridLayoutState = {
+const EMPTY: GridLayoutState = {
+  swarmId: null,
   layout: '2x2',
   panels: [],
   activePanelId: null,
   maximizedPanelId: null,
 };
 
-const listeners = new Set<() => void>();
+function derive(source: SwarmStoreState): GridLayoutState {
+  const swarm = source.swarms.find((s) => s.id === source.activeSwarmId);
+  if (!swarm) return EMPTY;
+  const ui = source.ui[swarm.id];
+  return {
+    swarmId: swarm.id,
+    layout: swarm.layout,
+    panels: swarm.panels.map((panel) => ({
+      id: panel.worktreeId,
+      sessionId: panel.worktreeId,
+      key: panel.key,
+      title: panel.title,
+      agentId: panel.agentId,
+      agentRole: panel.role,
+      color: panel.color,
+      status: source.statuses[panel.worktreeId] ?? 'idle',
+      modelId: panel.modelId,
+      kind: panel.kind,
+      cli: panel.cli,
+      branch: panel.branch,
+      port: panel.port,
+    })),
+    activePanelId: ui?.activePanelId ?? null,
+    maximizedPanelId: ui?.maximizedPanelId ?? null,
+  };
+}
 
-function emitChange() {
-  for (const listener of listeners) {
-    listener();
-  }
+// The grid is a pure view of the active swarm; the snapshot is cached per source state
+// so `useSyncExternalStore` sees a stable reference.
+let cachedSource: SwarmStoreState | null = null;
+let cachedView: GridLayoutState = EMPTY;
+
+function withActiveSwarm(action: (swarmId: string) => void): void {
+  const swarmId = swarmStore.getState().activeSwarmId;
+  if (swarmId) action(swarmId);
 }
 
 export const gridLayoutStore = {
   getState(): GridLayoutState {
-    return state;
+    const source = swarmStore.getState();
+    if (source !== cachedSource) {
+      cachedSource = source;
+      cachedView = derive(source);
+    }
+    return cachedView;
   },
 
-  subscribe(listener: () => void): () => void {
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
-  },
+  subscribe: swarmStore.subscribe,
 
   setLayout(layout: GridLayoutType): void {
-    if (state.layout === layout) return;
-    state = {
-      ...state,
-      layout,
-    };
-    emitChange();
+    withActiveSwarm((swarmId) => swarmStore.setLayout(swarmId, layout));
   },
 
   setActivePanelId(id: string | null): void {
-    if (state.activePanelId === id) return;
-    state = {
-      ...state,
-      activePanelId: id,
-    };
-    emitChange();
+    withActiveSwarm((swarmId) => swarmStore.setActivePanel(swarmId, id));
   },
 
   toggleMaximizePanel(id: string): void {
-    const isCurrentlyMaximized = state.maximizedPanelId === id;
-    state = {
-      ...state,
-      maximizedPanelId: isCurrentlyMaximized ? null : id,
-      activePanelId: id,
-    };
-    emitChange();
-  },
-
-  addPanel(panel: GridPanelConfig): void {
-    if (state.panels.some((p) => p.id === panel.id)) return;
-    const newPanels = [...state.panels, panel];
-    state = {
-      ...state,
-      panels: newPanels,
-      activePanelId: state.activePanelId ?? panel.id,
-    };
-    emitChange();
-  },
-
-  removePanel(id: string): void {
-    const panelIndex = state.panels.findIndex((p) => p.id === id);
-    if (panelIndex === -1) return;
-
-    const newPanels = state.panels.filter((p) => p.id !== id);
-    let newActiveId = state.activePanelId;
-
-    if (state.activePanelId === id) {
-      if (newPanels.length === 0) {
-        newActiveId = null;
-      } else {
-        const nextIndex = Math.min(panelIndex, newPanels.length - 1);
-        newActiveId = newPanels[nextIndex].id;
-      }
-    }
-
-    state = {
-      ...state,
-      panels: newPanels,
-      activePanelId: newActiveId,
-      maximizedPanelId: state.maximizedPanelId === id ? null : state.maximizedPanelId,
-    };
-    emitChange();
+    withActiveSwarm((swarmId) => swarmStore.toggleMaximize(swarmId, id));
   },
 
   updatePanelTitle(id: string, title: string): void {
-    const panel = state.panels.find((p) => p.id === id);
-    if (!panel || panel.title === title) return;
-    state = {
-      ...state,
-      panels: state.panels.map((p) => (p.id === id ? { ...p, title } : p)),
-    };
-    emitChange();
+    withActiveSwarm((swarmId) => swarmStore.updatePanel(swarmId, id, { title }));
   },
 
   updatePanelColor(id: string, color: TerminalPanelColor): void {
-    const panel = state.panels.find((p) => p.id === id);
-    if (!panel || panel.color === color) return;
-    state = {
-      ...state,
-      panels: state.panels.map((p) => (p.id === id ? { ...p, color } : p)),
-    };
-    emitChange();
-  },
-
-  updatePanelStatus(id: string, status: TerminalStatus): void {
-    const panel = state.panels.find((p) => p.id === id);
-    if (!panel || panel.status === status) return;
-    state = {
-      ...state,
-      panels: state.panels.map((p) => (p.id === id ? { ...p, status } : p)),
-    };
-    emitChange();
+    withActiveSwarm((swarmId) => swarmStore.updatePanel(swarmId, id, { color }));
   },
 
   updatePanelModel(id: string, modelId: string): void {
-    const panel = state.panels.find((p) => p.id === id);
-    if (!panel || panel.modelId === modelId) return;
-    state = {
-      ...state,
-      panels: state.panels.map((p) => (p.id === id ? { ...p, modelId } : p)),
-    };
-    emitChange();
+    withActiveSwarm((swarmId) => swarmStore.updatePanel(swarmId, id, { modelId }));
   },
 
-  updatePanel(id: string, updates: Partial<GridPanelConfig>): void {
-    const panel = state.panels.find((p) => p.id === id);
-    if (!panel) return;
-    state = {
-      ...state,
-      panels: state.panels.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-    };
-    emitChange();
-  },
-
-  setPanels(panels: GridPanelConfig[]): void {
-    const activeExists = state.activePanelId ? panels.some((p) => p.id === state.activePanelId) : false;
-    const maxExists = state.maximizedPanelId ? panels.some((p) => p.id === state.maximizedPanelId) : false;
-
-    state = {
-      ...state,
-      panels,
-      activePanelId: activeExists ? state.activePanelId : (panels.length > 0 ? panels[0].id : null),
-      maximizedPanelId: maxExists ? state.maximizedPanelId : null,
-    };
-    emitChange();
+  updatePanelStatus(id: string, status: TerminalStatus): void {
+    swarmStore.setPanelStatus(id, status);
   },
 
   cycleNextPanel(): void {
-    if (state.panels.length <= 1) return;
-    const currentIndex = state.panels.findIndex((p) => p.id === state.activePanelId);
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % state.panels.length;
-    const nextId = state.panels[nextIndex].id;
-
-    state = {
-      ...state,
-      activePanelId: nextId,
-      maximizedPanelId: state.maximizedPanelId ? nextId : null,
-    };
-    emitChange();
+    swarmStore.cyclePanel(1);
   },
 
   cyclePrevPanel(): void {
-    if (state.panels.length <= 1) return;
-    const currentIndex = state.panels.findIndex((p) => p.id === state.activePanelId);
-    const prevIndex = currentIndex === -1 ? state.panels.length - 1 : (currentIndex - 1 + state.panels.length) % state.panels.length;
-    const prevId = state.panels[prevIndex].id;
-
-    state = {
-      ...state,
-      activePanelId: prevId,
-      maximizedPanelId: state.maximizedPanelId ? prevId : null,
-    };
-    emitChange();
-  },
-
-  clearPanels(): void {
-    state = {
-      ...state,
-      panels: [],
-      activePanelId: null,
-      maximizedPanelId: null,
-    };
-    emitChange();
+    swarmStore.cyclePanel(-1);
   },
 };
 
 export function useGridLayoutStore() {
-  const storeState = useSyncExternalStore(gridLayoutStore.subscribe, gridLayoutStore.getState);
-
+  const view = useSyncExternalStore(gridLayoutStore.subscribe, gridLayoutStore.getState);
   return {
-    ...storeState,
+    ...view,
     setLayout: gridLayoutStore.setLayout,
     setActivePanelId: gridLayoutStore.setActivePanelId,
     toggleMaximizePanel: gridLayoutStore.toggleMaximizePanel,
-    addPanel: gridLayoutStore.addPanel,
-    removePanel: gridLayoutStore.removePanel,
     updatePanelTitle: gridLayoutStore.updatePanelTitle,
     updatePanelColor: gridLayoutStore.updatePanelColor,
-    updatePanelStatus: gridLayoutStore.updatePanelStatus,
     updatePanelModel: gridLayoutStore.updatePanelModel,
-    updatePanel: gridLayoutStore.updatePanel,
-    setPanels: gridLayoutStore.setPanels,
+    updatePanelStatus: gridLayoutStore.updatePanelStatus,
     cycleNextPanel: gridLayoutStore.cycleNextPanel,
     cyclePrevPanel: gridLayoutStore.cyclePrevPanel,
-    clearPanels: gridLayoutStore.clearPanels,
   };
 }

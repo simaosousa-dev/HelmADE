@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../lib/ipc';
 import type { AgentDefinition } from '../types/agent';
 
 class AgentRegistryService {

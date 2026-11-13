@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { errorMessage } from '../lib/ipc';
 import { voiceService } from '../services/voiceService';
 import { applyCodePhonetics, injectSpeechToPrompt } from '../config/codePhonetics';
 import { teamWireStore } from '../stores/useTeamWireStore';
@@ -92,7 +93,7 @@ export function useGlobalPushToTalk(options: PushToTalkOptions = {}) {
       });
       startAudioWaveAnimation();
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorMsg = errorMessage(err);
       updateState({
         isActive: false,
         isListening: false,
@@ -115,7 +116,7 @@ export function useGlobalPushToTalk(options: PushToTalkOptions = {}) {
         latencyMs: latency,
       });
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorMsg = errorMessage(err);
       updateState({
         isListening: false,
         error: errorMsg,

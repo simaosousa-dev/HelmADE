@@ -1,10 +1,16 @@
 export interface SpawnPtyOptions {
   sessionId: string;
   cwd?: string;
-  shell?: string;
+  /** Program and arguments run instead of an interactive shell (agent CLIs). */
+  command?: string[];
   cols?: number;
   rows?: number;
   env?: Record<string, string>;
+}
+
+export interface PtyExitPayload {
+  sessionId: string;
+  exitCode: number | null;
 }
 
 export interface TerminalDimension {
