@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use super::{ensure_local_excludes, require_repo, run_git, symlink, validate_branch, validate_id};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct WorktreeInfo {
@@ -13,187 +14,159 @@ pub struct WorktreeInfo {
     pub created_at: i64,
 }
 
-/// Sanitiza identificadores para evitar injeção em caminhos de ficheiros
-fn sanitize_id(id: &str) -> Result<String, String> {
-    let clean: String = id
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-        .collect();
-    if clean.is_empty() {
-        return Err("Identificador de worktree inválido ou vazio".to_string());
-    }
-    Ok(clean)
+pub fn branch_name(worktree_id: &str) -> String {
+    format!("helm/swarm-{worktree_id}")
 }
 
-/// Cria um novo Git Worktree isolado na pasta .helm/worktrees/<swarm_id>
+pub fn worktree_dir(repo: &Path, worktree_id: &str) -> PathBuf {
+    repo.join(".helm").join("worktrees").join(worktree_id)
+}
+
+/// Creates an isolated worktree at `.helm/worktrees/<id>` on a new `helm/swarm-<id>` branch
+/// and links the repository's ignored dependency directories into it.
 pub fn create_worktree(
     repo_path: &str,
-    swarm_id: &str,
+    worktree_id: &str,
     base_branch: Option<&str>,
 ) -> Result<WorktreeInfo, String> {
-    let clean_id = sanitize_id(swarm_id)?;
-    let repo = Path::new(repo_path);
-    if !repo.exists() || !repo.join(".git").exists() {
-        return Err(format!("O caminho '{repo_path}' não é um repositório Git válido"));
+    let id = validate_id(worktree_id)?;
+    let repo = require_repo(repo_path)?;
+    let base = match base_branch {
+        Some(name) => validate_branch(name)?,
+        None => "HEAD",
+    };
+
+    let branch = branch_name(id);
+    let dir = worktree_dir(repo, id);
+    if dir.exists() {
+        return Err("Já existe um worktree com este identificador".to_string());
     }
-
-    let branch = format!("helm/swarm-{clean_id}");
-    let worktree_dir: PathBuf = repo.join(".helm").join("worktrees").join(&clean_id);
-
-    if worktree_dir.exists() {
-        return Err(format!(
-            "O diretório de worktree '{}' já existe",
-            worktree_dir.display()
-        ));
-    }
-
-    if let Some(parent) = worktree_dir.parent() {
+    if let Some(parent) = dir.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Falha ao criar diretório base de worktrees: {e}"))?;
     }
+    // Keep HelmADE's own directory out of the user's `git status` without touching .gitignore.
+    ensure_local_excludes(repo, &[".helm/".to_string()])?;
 
-    let base = base_branch.unwrap_or("HEAD");
+    run_git(
+        repo,
+        [
+            "worktree".as_ref(),
+            "add".as_ref(),
+            "--quiet".as_ref(),
+            "-b".as_ref(),
+            branch.as_ref(),
+            dir.as_os_str(),
+            base.as_ref(),
+        ],
+    )
+    .map_err(|stderr| format!("Erro do Git ao criar worktree: {stderr}"))?;
 
-    // Executa `git worktree add -b helm/swarm-<id> <path> <base>`
-    let output = Command::new("git")
-        .current_dir(repo)
-        .args([
-            "worktree",
-            "add",
-            "-b",
-            &branch,
-            worktree_dir.to_str().unwrap(),
-            base,
-        ])
-        .output()
-        .map_err(|e| format!("Falha ao executar comando git: {e}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Erro do Git ao criar worktree: {stderr}"));
+    if let Err(err) = symlink::link_dependencies(repo, &dir) {
+        eprintln!("[helmade] dependency symlinks skipped: {err}");
     }
 
-    // Liga dependências pesadas por symlink de forma automática e transparente
-    let _ = crate::git::symlink::link_dependencies(repo, &worktree_dir);
-
-    let now = SystemTime::now()
+    let created_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as i64;
 
     Ok(WorktreeInfo {
-        swarm_id: clean_id,
+        swarm_id: id.to_string(),
         branch,
-        path: worktree_dir.to_string_lossy().to_string(),
+        path: dir.to_string_lossy().to_string(),
         is_bare: false,
-        created_at: now,
+        created_at,
     })
 }
 
-/// Remove um Git Worktree de forma limpa e segura
+/// Removes a worktree and, optionally, its branch. Dependency symlinks are unlinked first
+/// so nothing in the main checkout is ever deleted through them.
 pub fn remove_worktree(
     repo_path: &str,
-    swarm_id: &str,
+    worktree_id: &str,
     delete_branch: bool,
 ) -> Result<bool, String> {
-    let clean_id = sanitize_id(swarm_id)?;
-    let repo = Path::new(repo_path);
-    let worktree_dir: PathBuf = repo.join(".helm").join("worktrees").join(&clean_id);
-    let branch = format!("helm/swarm-{clean_id}");
+    let id = validate_id(worktree_id)?;
+    let repo = require_repo(repo_path)?;
+    let dir = worktree_dir(repo, id);
 
-    if worktree_dir.exists() {
-        // Desliga dependências antes de remover o worktree para evitar apagar links em cascata
-        let _ = crate::git::symlink::unlink_dependencies(&worktree_dir);
-
-        let output = Command::new("git")
-            .current_dir(repo)
-            .args(["worktree", "remove", "--force", worktree_dir.to_str().unwrap()])
-            .output()
-            .map_err(|e| format!("Falha ao executar git worktree remove: {e}"))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("Erro ao remover worktree: {stderr}"));
-        }
+    if dir.exists() {
+        symlink::unlink_dependencies(&dir)?;
+        run_git(
+            repo,
+            [
+                "worktree".as_ref(),
+                "remove".as_ref(),
+                "--force".as_ref(),
+                dir.as_os_str(),
+            ],
+        )
+        .map_err(|stderr| format!("Erro ao remover worktree: {stderr}"))?;
+    }
+    // Drops stale administrative entries when the directory was deleted by hand.
+    if let Err(err) = run_git(repo, ["worktree", "prune"]) {
+        eprintln!("[helmade] git worktree prune failed: {err}");
     }
 
     if delete_branch {
-        let _ = Command::new("git")
-            .current_dir(repo)
-            .args(["branch", "-D", &branch])
-            .output();
+        let branch = branch_name(id);
+        let exists = run_git(
+            repo,
+            ["rev-parse", "--verify", "--quiet", &format!("refs/heads/{branch}")],
+        )
+        .is_ok();
+        if exists {
+            run_git(repo, ["branch", "-D", &branch])
+                .map_err(|stderr| format!("Erro ao remover branch do worktree: {stderr}"))?;
+        }
     }
 
     Ok(true)
 }
 
-/// Lista todos os Git Worktrees ativos no repositório
+/// Lists every worktree of the repository (the main checkout included).
 pub fn list_worktrees(repo_path: &str) -> Result<Vec<WorktreeInfo>, String> {
-    let repo = Path::new(repo_path);
-    if !repo.exists() || !repo.join(".git").exists() {
-        return Err(format!("O caminho '{repo_path}' não é um repositório Git"));
-    }
+    let repo = require_repo(repo_path)?;
+    let stdout = run_git(repo, ["worktree", "list", "--porcelain"])
+        .map_err(|stderr| format!("Erro ao obter lista de worktrees: {stderr}"))?;
 
-    let output = Command::new("git")
-        .current_dir(repo)
-        .args(["worktree", "list", "--porcelain"])
-        .output()
-        .map_err(|e| format!("Falha ao listar worktrees: {e}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Erro ao obter lista de worktrees: {stderr}"));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let mut list = Vec::new();
-    let mut current_path: Option<String> = None;
-    let mut current_branch: Option<String> = None;
+    // Entries are separated by blank lines; a trailing sentinel flushes the last one.
+    let mut path: Option<String> = None;
+    let mut branch: Option<String> = None;
     let mut is_bare = false;
-
-    for line in stdout.lines() {
-        if let Some(path) = line.strip_prefix("worktree ") {
-            current_path = Some(path.trim().to_string());
-            current_branch = None;
+    for line in stdout.lines().chain(std::iter::once("")) {
+        if let Some(value) = line.strip_prefix("worktree ") {
+            path = Some(value.trim().to_string());
+            branch = None;
             is_bare = false;
-        } else if let Some(branch_ref) = line.strip_prefix("branch ") {
-            let clean_b = branch_ref
-                .trim()
-                .strip_prefix("refs/heads/")
-                .unwrap_or(branch_ref.trim());
-            current_branch = Some(clean_b.to_string());
-        } else if line.trim() == "bare" {
-            is_bare = true;
-        } else if line.is_empty() {
-            if let Some(p) = current_path.take() {
-                let swarm_id = Path::new(&p)
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-
-                list.push(WorktreeInfo {
-                    swarm_id,
-                    branch: current_branch.take().unwrap_or_else(|| "detached".to_string()),
-                    path: p,
-                    is_bare,
-                    created_at: 0,
-                });
-            }
+            continue;
         }
-    }
-
-    if let Some(p) = current_path {
-        let swarm_id = Path::new(&p)
+        if let Some(value) = line.strip_prefix("branch ") {
+            let value = value.trim();
+            branch = Some(value.strip_prefix("refs/heads/").unwrap_or(value).to_string());
+            continue;
+        }
+        if line.trim() == "bare" {
+            is_bare = true;
+            continue;
+        }
+        if !line.is_empty() {
+            continue;
+        }
+        let Some(entry_path) = path.take() else {
+            continue;
+        };
+        let swarm_id = Path::new(&entry_path)
             .file_name()
-            .and_then(|n| n.to_str())
+            .and_then(|name| name.to_str())
             .unwrap_or("unknown")
             .to_string();
-
         list.push(WorktreeInfo {
             swarm_id,
-            branch: current_branch.unwrap_or_else(|| "detached".to_string()),
-            path: p,
+            branch: branch.take().unwrap_or_else(|| "detached".to_string()),
+            path: entry_path,
             is_bare,
             created_at: 0,
         });
@@ -202,78 +175,83 @@ pub fn list_worktrees(repo_path: &str) -> Result<Vec<WorktreeInfo>, String> {
     Ok(list)
 }
 
+/// Worktrees under `.helm/worktrees` (HelmADE-managed only).
+pub fn list_managed_worktrees(repo_path: &str) -> Result<Vec<WorktreeInfo>, String> {
+    let repo = require_repo(repo_path)?;
+    let managed_root = repo.join(".helm").join("worktrees");
+    let canonical_root = managed_root.canonicalize().unwrap_or(managed_root);
+    Ok(list_worktrees(repo_path)?
+        .into_iter()
+        .filter(|info| {
+            let path = Path::new(&info.path);
+            let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+            canonical.parent() == Some(canonical_root.as_path())
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::git::test_support::TempRepo;
 
     #[test]
     fn test_worktree_lifecycle_in_temp_repo() {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let temp_dir = std::env::temp_dir().join(format!("helmade_test_repo_{timestamp}"));
-        fs::create_dir_all(&temp_dir).unwrap();
+        let repo = TempRepo::new("worktree");
+        let id = "agent-alpha-1";
 
-        // Inicializar repositório Git temporário
-        let init_status = Command::new("git")
-            .current_dir(&temp_dir)
-            .args(["init"])
-            .status()
-            .expect("falha ao inicializar git");
-        assert!(init_status.success());
+        let wt = create_worktree(repo.path_str(), id, None).expect("create worktree");
+        assert_eq!(wt.swarm_id, id);
+        assert_eq!(wt.branch, "helm/swarm-agent-alpha-1");
+        let wt_path = Path::new(&wt.path);
+        assert!(wt_path.join("README.md").exists());
+        assert!(wt_path.join("node_modules").join("pkg.json").exists());
 
-        // Configurar user local temporário para commits
-        let _ = Command::new("git")
-            .current_dir(&temp_dir)
-            .args(["config", "user.name", "HelmADE Test"])
-            .status();
-        let _ = Command::new("git")
-            .current_dir(&temp_dir)
-            .args(["config", "user.email", "test@helmade.dev"])
-            .status();
+        // Neither `.helm/` nor the dependency symlink pollute git status.
+        assert_eq!(run_git(&repo.path, ["status", "--porcelain"]).expect("status"), "");
+        assert_eq!(run_git(wt_path, ["status", "--porcelain"]).expect("status"), "");
 
-        // Criar pasta simulada de node_modules na raiz
-        let node_modules_dir = temp_dir.join("node_modules");
-        fs::create_dir_all(&node_modules_dir).unwrap();
-        fs::write(node_modules_dir.join("pkg.json"), r#"{"name":"test"}"#).unwrap();
+        let managed = list_managed_worktrees(repo.path_str()).expect("list");
+        assert_eq!(managed.len(), 1);
+        assert_eq!(managed[0].swarm_id, id);
+        assert!(list_worktrees(repo.path_str()).expect("list all").len() >= 2);
 
-        // Criar ficheiro inicial e commit
-        fs::write(temp_dir.join("README.md"), "# HelmADE Test").unwrap();
-        let _ = Command::new("git")
-            .current_dir(&temp_dir)
-            .args(["add", "."])
-            .status();
-        let commit_status = Command::new("git")
-            .current_dir(&temp_dir)
-            .args(["commit", "-m", "chore: initial test commit"])
-            .status()
-            .expect("falha no commit inicial");
-        assert!(commit_status.success());
+        assert!(remove_worktree(repo.path_str(), id, true).expect("remove"));
+        assert!(!wt_path.exists());
+        assert!(repo.path.join("node_modules").join("pkg.json").exists());
+        assert!(run_git(&repo.path, ["branch", "--list", "helm/*"])
+            .expect("branches")
+            .is_empty());
+        assert!(list_managed_worktrees(repo.path_str()).expect("list").is_empty());
+    }
 
-        let swarm_id = "agent-alpha-1";
-        let repo_str = temp_dir.to_str().unwrap();
+    #[test]
+    fn create_rejects_duplicate_and_invalid_ids() {
+        let repo = TempRepo::new("worktree_dup");
+        create_worktree(repo.path_str(), "dup", None).expect("first");
+        assert!(create_worktree(repo.path_str(), "dup", None).is_err());
+        assert!(create_worktree(repo.path_str(), "../escape", None).is_err());
+        assert!(create_worktree(repo.path_str(), "ok", Some("--force")).is_err());
+    }
 
-        // 1. Criar Worktree
-        let wt = create_worktree(repo_str, swarm_id, None).expect("falha ao criar worktree");
-        assert_eq!(wt.swarm_id, swarm_id);
-        assert!(Path::new(&wt.path).exists());
-        assert!(Path::new(&wt.path).join("README.md").exists());
-        // Verificar que o symlink de dependências foi criado automaticamente
-        assert!(Path::new(&wt.path).join("node_modules").join("pkg.json").exists());
+    #[test]
+    fn remove_is_idempotent_when_the_directory_was_deleted_by_hand() {
+        let repo = TempRepo::new("worktree_gone");
+        let wt = create_worktree(repo.path_str(), "gone", None).expect("create");
+        std::fs::remove_dir_all(&wt.path).expect("manual delete");
+        assert!(remove_worktree(repo.path_str(), "gone", true).expect("remove"));
+        assert!(remove_worktree(repo.path_str(), "gone", true).expect("second remove"));
+        assert!(run_git(&repo.path, ["branch", "--list", "helm/*"])
+            .expect("branches")
+            .is_empty());
+    }
 
-        // 2. Listar Worktrees
-        let list = list_worktrees(repo_str).expect("falha ao listar worktrees");
-        assert!(list.iter().any(|item| item.swarm_id == swarm_id));
-
-        // 3. Remover Worktree
-        let removed = remove_worktree(repo_str, swarm_id, true).expect("falha ao remover worktree");
-        assert!(removed);
-        assert!(!Path::new(&wt.path).exists());
-        // Assegurar que node_modules na raiz permanece intacto
-        assert!(temp_dir.join("node_modules").join("pkg.json").exists());
-
-        // Limpeza do diretório de teste
-        let _ = fs::remove_dir_all(&temp_dir);
+    #[test]
+    fn non_repository_is_rejected_with_a_clear_message() {
+        let dir = std::env::temp_dir().join(format!("helmade_norepo_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("dir");
+        let err = create_worktree(dir.to_str().expect("utf-8"), "x", None).expect_err("not a repo");
+        assert!(err.contains("não é um repositório Git"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
