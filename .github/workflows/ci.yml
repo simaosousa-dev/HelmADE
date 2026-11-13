@@ -51,6 +51,9 @@ jobs:
       - name: Strict Typecheck
         run: npm run typecheck
 
+      - name: Unit Tests (Vitest)
+        run: npm test
+
       - name: Production Bundle Build
         run: npm run build
 
@@ -64,14 +67,19 @@ jobs:
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin, x86_64-apple-darwin
+          components: clippy
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
 
-      - name: Cargo Check
-        run: |
-          cd src-tauri
-          cargo check --verbose
+      # tauri::generate_context! embeds the frontend bundle, so dist/ must exist.
+      - name: Stub Frontend Dist
+        run: mkdir -p dist && touch dist/index.html
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Cargo Test
+        run: cargo test
