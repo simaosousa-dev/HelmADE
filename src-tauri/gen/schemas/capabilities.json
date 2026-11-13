@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"HelmADE default capability","local":true,"windows":["main"],"permissions":["core:default","dialog:default"]}}
+{"default":{"identifier":"default","description":"Least privilege for the main window: core IPC/events and the native folder picker.","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open"]}}
