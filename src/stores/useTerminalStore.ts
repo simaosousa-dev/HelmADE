@@ -15,8 +15,6 @@ let state: TerminalStoreState = {
 };
 
 const listeners = new Set<() => void>();
-let isInitialized = false;
-let unlisteners: Array<() => void> = [];
 
 function emitChange() {
   for (const listener of listeners) {
@@ -40,38 +38,19 @@ export const terminalStore = {
    * Inicializa subscrições de eventos IPC Tauri para deteção reativa de prompts e standby.
    */
   async initListeners(): Promise<() => void> {
-    if (isInitialized) {
-      return () => {};
-    }
-    isInitialized = true;
-
-    try {
-      const unlistenBlocked = await terminalService.onBlockedPrompt((prompt) => {
+    const unlisteners = await Promise.all([
+      terminalService.onBlockedPrompt((prompt) => {
         terminalStore.setBlockedPrompt(prompt.sessionId, prompt);
-      });
-      unlisteners.push(unlistenBlocked);
-
-      const unlistenCleared = await terminalService.onBlockedCleared(({ sessionId }) => {
+      }),
+      terminalService.onBlockedCleared(({ sessionId }) => {
         terminalStore.clearBlockedPrompt(sessionId);
-      });
-      unlisteners.push(unlistenCleared);
-
-      const unlistenStandby = await terminalService.onStandbyChanged(
-        ({ sessionId, isStandby }) => {
-          terminalStore.setStandby(sessionId, isStandby);
-        }
-      );
-      unlisteners.push(unlistenStandby);
-    } catch (err) {
-      console.warn('[terminalStore] IPC listeners indisponíveis no ambiente atual:', err);
-    }
-
+      }),
+      terminalService.onStandbyChanged(({ sessionId, isStandby }) => {
+        terminalStore.setStandby(sessionId, isStandby);
+      }),
+    ]);
     return () => {
-      for (const unlisten of unlisteners) {
-        unlisten();
-      }
-      unlisteners = [];
-      isInitialized = false;
+      for (const unlisten of unlisteners) unlisten();
     };
   },
 

@@ -6,6 +6,9 @@ import type {
   PtyExitPayload,
 } from '../types/terminal.ts';
 
+/** Tail of the pending writes of each session, so input reaches the PTY in order. */
+const writeQueues = new Map<string, Promise<void>>();
+
 export const terminalService = {
   /**
    * Inicializa um novo processo PTY local com suporte a shell interativo e cwd configurável.
@@ -23,9 +26,20 @@ export const terminalService = {
 
   /**
    * Envia dados de entrada do utilizador (comandos ou teclas ANSI) para o stdin do PTY.
+   * As escritas de cada sessão são encadeadas: cada tecla é um pedido assíncrono e, sem
+   * isto, duas teclas rápidas podiam chegar ao terminal pela ordem errada.
    */
-  async writePty(sessionId: string, data: string): Promise<void> {
-    return invoke<void>('write_pty', { sessionId, data });
+  writePty(sessionId: string, data: string): Promise<void> {
+    const previous = writeQueues.get(sessionId) ?? Promise.resolve();
+    const next = previous
+      .catch(() => undefined) // a failed write must not block the ones after it
+      .then(() => invoke<void>('write_pty', { sessionId, data }));
+    writeQueues.set(sessionId, next);
+    const forget = () => {
+      if (writeQueues.get(sessionId) === next) writeQueues.delete(sessionId);
+    };
+    next.then(forget, forget);
+    return next;
   },
 
   /**
