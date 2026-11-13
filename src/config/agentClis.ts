@@ -21,8 +21,6 @@ const PROVIDER_CLI: Record<ProviderId, AgentCliId | null> = {
   openai: 'codex',
   google: 'gemini',
   ollama: 'ollama',
-  // No first-party CLI: DeepSeek models are reached through Ollama.
-  deepseek: 'ollama',
 };
 
 export function cliForProvider(provider: ProviderId): AgentCliId | null {

@@ -78,7 +78,6 @@ describe('agentClis', () => {
     expect(cliForProvider('openai')).toBe('codex');
     expect(cliForProvider('google')).toBe('gemini');
     expect(cliForProvider('ollama')).toBe('ollama');
-    expect(cliForProvider('deepseek')).toBe('ollama');
   });
 
   test('the protocol note names the workspace and every colleague but not the agent itself', () => {

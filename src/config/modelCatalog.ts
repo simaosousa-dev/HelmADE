@@ -6,7 +6,7 @@ export type CognitiveProfileId =
   | 'research-context'
   | 'local-zero-cost';
 
-export type ProviderId = 'anthropic' | 'openai' | 'google' | 'deepseek' | 'ollama';
+export type ProviderId = 'anthropic' | 'openai' | 'google' | 'ollama';
 
 export interface CognitiveProfile {
   id: CognitiveProfileId;
@@ -70,92 +70,74 @@ export const COGNITIVE_PROFILES: Record<CognitiveProfileId, CognitiveProfile> = 
   },
 };
 
+/**
+ * Catálogo de modelos. O fornecedor de cada modelo determina a CLI de agente que corre no
+ * painel (Claude Code, Codex, Gemini CLI ou Ollama). `cliModel` é o valor passado à flag de
+ * modelo dessa CLI; quando omitido, a CLI usa o modelo que o utilizador lá tiver configurado.
+ */
 export const AI_MODELS: AIModelDefinition[] = [
   // --- 1. Deep Thinking / Raciocínio Profundo ---
   {
-    id: 'claude-3-7-sonnet-thinking',
-    name: 'Claude 3.7 Sonnet Thinking',
+    id: 'claude-opus-5-5',
+    name: 'Claude Opus 5.5',
     provider: 'anthropic',
     profile: 'deep-thinking',
-    contextWindow: '200k',
-    description: 'Raciocínio híbrido pioneiro com pensamento estendido para arquitetura e problemas complexos.',
-    costDescription: 'Premium / Token Raciocínio',
+    contextWindow: '1M',
+    description: 'Raciocínio profundo para orquestração, arquitetura e auditoria. Corre no Claude Code.',
+    costDescription: '$4 / $20 por MTok',
+    cliModel: 'claude-opus-5-5',
   },
   {
-    id: 'o3-mini',
-    name: 'OpenAI o3-mini',
-    provider: 'openai',
-    profile: 'deep-thinking',
-    contextWindow: '200k',
-    description: 'Raciocínio especializado de ponta em matemática, lógica estrita e engenharia de precisão.',
-    costDescription: 'Médio / Otimizado',
-  },
-  {
-    id: 'gemini-2.0-flash-thinking',
-    name: 'Gemini 2.0 Flash Thinking',
-    provider: 'google',
+    id: 'claude-fable-5-2',
+    name: 'Claude Fable 5.2',
+    provider: 'anthropic',
     profile: 'deep-thinking',
     contextWindow: '1M',
-    description: 'Processo reflexivo com tokens de pensamento visíveis e contexto multimodal massivo.',
-    costDescription: 'Económico / Reflexivo',
+    description: 'O modelo mais capaz, para tarefas longas e muito exigentes. Corre no Claude Code.',
+    costDescription: '$8 / $40 por MTok',
+    cliModel: 'claude-fable-5-2',
   },
   {
-    id: 'deepseek-r1',
-    name: 'DeepSeek-R1',
-    provider: 'deepseek',
+    id: 'codex-default',
+    name: 'Codex (modelo da CLI)',
+    provider: 'openai',
     profile: 'deep-thinking',
-    contextWindow: '64k',
-    description: 'Raciocínio aberto treinado por reforço puro para resoluções algorítmicas rigorosas.',
-    costDescription: 'Ultrabaixo Custo',
+    contextWindow: 'definido pela CLI',
+    description: 'Usa o modelo configurado na tua Codex CLI.',
+    costDescription: 'Conforme a tua conta',
   },
 
   // --- 2. Fast / Económico ---
   {
-    id: 'claude-3-5-haiku',
-    name: 'Claude 3.5 Haiku',
+    id: 'claude-sonnet-5-5',
+    name: 'Claude Sonnet 5.5',
     provider: 'anthropic',
     profile: 'fast-economic',
-    contextWindow: '200k',
-    description: 'Velocidade extrema de execução para geração de utilitários, scripts e triagem.',
-    costDescription: 'Económico',
+    contextWindow: '1M',
+    description: 'Equilíbrio entre velocidade e capacidade para implementação do dia a dia. Corre no Claude Code.',
+    costDescription: '$2 / $10 por MTok',
+    cliModel: 'claude-sonnet-5-5',
   },
   {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o-mini',
-    provider: 'openai',
-    profile: 'fast-economic',
-    contextWindow: '128k',
-    description: 'Modelo compacto com resposta rápida e custos diminutos para tarefas de suporte contínuo.',
-    costDescription: 'Económico',
-  },
-  {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
-    provider: 'google',
+    id: 'claude-haiku-5-5',
+    name: 'Claude Haiku 5.5',
+    provider: 'anthropic',
     profile: 'fast-economic',
     contextWindow: '1M',
-    description: 'Desempenho relâmpago de última geração com throughput elevado para chamadas de rotina.',
-    costDescription: 'Ultrabaixo Custo',
+    description: 'Respostas muito rápidas e baratas para tarefas rotineiras. Corre no Claude Code.',
+    costDescription: '$0.10 / $0.50 por MTok',
+    cliModel: 'claude-haiku-5-5',
   },
 
   // --- 3. Research / Amplo Contexto ---
   {
-    id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro 2M',
+    id: 'gemini-default',
+    name: 'Gemini (modelo da CLI)',
     provider: 'google',
     profile: 'research-context',
-    contextWindow: '2M',
-    description: 'Janela monumental de 2 milhões de tokens para absorção de projetos inteiros e múltiplos volumes.',
-    costDescription: 'Intermédio / Alto Contexto',
-  },
-  {
-    id: 'claude-3-5-sonnet',
-    name: 'Claude 3.5 Sonnet',
-    provider: 'anthropic',
-    profile: 'research-context',
-    contextWindow: '200k',
-    description: 'Referência da indústria em compreensão de código, nuances arquiteturais e geração refinada.',
-    costDescription: 'Standard Pro',
+    contextWindow: 'definido pela CLI',
+    description: 'Usa o modelo configurado na tua Gemini CLI, indicado para exploração de documentação e especificações.',
+    costDescription: 'Conforme a tua conta',
   },
 
   // --- 4. Local 0.00€ / Ollama ---
@@ -165,9 +147,10 @@ export const AI_MODELS: AIModelDefinition[] = [
     provider: 'ollama',
     profile: 'local-zero-cost',
     contextWindow: '128k',
-    description: 'Modelo de pesos abertos de última geração executado localmente sem dependência de nuvem.',
+    description: 'Modelo de pesos abertos executado localmente sem dependência de nuvem.',
     costDescription: '0.00€ / Local',
     isLocal: true,
+    cliModel: 'llama3.3',
   },
   {
     id: 'ollama/qwen2.5-coder:32b',
@@ -175,9 +158,10 @@ export const AI_MODELS: AIModelDefinition[] = [
     provider: 'ollama',
     profile: 'local-zero-cost',
     contextWindow: '32k',
-    description: 'Especialista local em programação com desempenho equiparável a modelos de topo na nuvem.',
+    description: 'Modelo local especializado em código, para máquinas com bastante memória.',
     costDescription: '0.00€ / Local',
     isLocal: true,
+    cliModel: 'qwen2.5-coder:32b',
   },
   {
     id: 'ollama/qwen2.5-coder:7b',
@@ -185,42 +169,35 @@ export const AI_MODELS: AIModelDefinition[] = [
     provider: 'ollama',
     profile: 'local-zero-cost',
     contextWindow: '32k',
-    description: 'Versão ágil de 7B ideal para hardware mais leve com suporte a tarefas de código.',
+    description: 'Modelo local leve especializado em código.',
     costDescription: '0.00€ / Local',
     isLocal: true,
+    cliModel: 'qwen2.5-coder:7b',
   },
   {
     id: 'ollama/deepseek-r1:14b',
-    name: 'DeepSeek-R1 Distill 14B',
+    name: 'DeepSeek R1 14B',
     provider: 'ollama',
     profile: 'local-zero-cost',
-    contextWindow: '32k',
-    description: 'Raciocínio destilado com etapas de reflexão em execução 100% privada e offline.',
+    contextWindow: '64k',
+    description: 'Modelo local com raciocínio explícito.',
     costDescription: '0.00€ / Local',
     isLocal: true,
-  },
-  {
-    id: 'ollama/custom',
-    name: 'Custom Local Ollama',
-    provider: 'ollama',
-    profile: 'local-zero-cost',
-    contextWindow: 'Variável',
-    description: 'Qualquer modelo instalado localmente no daemon Ollama (http://localhost:11434).',
-    costDescription: '0.00€ / Local',
-    isLocal: true,
+    cliModel: 'deepseek-r1:14b',
   },
 ];
 
+/** Modelo recomendado por papel: raciocínio profundo para quem decide e audita, rápido para quem executa. */
 export const ROLE_DEFAULT_MODELS: Record<AgentRoleType, string> = {
-  architect: 'claude-3-7-sonnet-thinking',
-  fullstack: 'claude-3-7-sonnet-thinking',
-  frontend: 'claude-3-5-sonnet',
-  'apple-hig': 'claude-3-5-sonnet',
-  database: 'gemini-2.0-flash-thinking',
-  'qa-security': 'deepseek-r1',
-  devops: 'claude-3-5-haiku',
-  system: 'gemini-2.0-flash',
-  custom: 'claude-3-7-sonnet-thinking',
+  architect: 'claude-opus-5-5',
+  fullstack: 'claude-sonnet-5-5',
+  frontend: 'claude-sonnet-5-5',
+  'apple-hig': 'claude-sonnet-5-5',
+  database: 'claude-sonnet-5-5',
+  'qa-security': 'claude-opus-5-5',
+  devops: 'claude-haiku-5-5',
+  system: 'claude-sonnet-5-5',
+  custom: 'claude-sonnet-5-5',
 };
 
 /**
@@ -253,7 +230,7 @@ export function getDefaultModelForRole(role?: AgentRoleType | string): AIModelDe
     const model = getModelById(defaultModelId);
     if (model) return model;
   }
-  return AI_MODELS[0]; // Fallback seguro para Claude 3.7 Sonnet Thinking
+  return AI_MODELS[0];
 }
 
 /**
