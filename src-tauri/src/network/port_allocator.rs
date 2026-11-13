@@ -141,25 +141,22 @@ mod tests {
 
     #[test]
     fn test_release_and_reallocation() {
-        let mut allocator = PortAllocator::new(16000, 16005);
-        let swarm_1 = "swarm-1";
-        let swarm_2 = "swarm-2";
+        // Exact port numbers depend on what else is listening on the machine, so the
+        // assertions are about the allocator's bookkeeping, not about specific ports.
+        let mut allocator = PortAllocator::new(16000, 16040);
 
-        let port_1 = allocator.allocate(swarm_1).unwrap();
-        assert_eq!(port_1, 16000);
+        let port_1 = allocator.allocate("swarm-1").unwrap();
+        let port_2 = allocator.allocate("swarm-2").unwrap();
+        assert!((16000..=16040).contains(&port_1));
+        assert!(port_2 > port_1);
 
-        let port_2 = allocator.allocate(swarm_2).unwrap();
-        assert_eq!(port_2, 16001);
+        assert_eq!(allocator.release("swarm-1"), Some(port_1));
+        assert_eq!(allocator.get_port("swarm-1"), None);
+        assert_eq!(allocator.release("swarm-1"), None);
 
-        // Liberar swarm-1
-        let released = allocator.release(swarm_1);
-        assert_eq!(released, Some(16000));
-        assert_eq!(allocator.get_port(swarm_1), None);
-
-        // Próxima alocação deve poder reutilizar a porta 16000 liberada
-        let swarm_3 = "swarm-3";
-        let port_3 = allocator.allocate(swarm_3).unwrap();
-        assert_eq!(port_3, 16000);
+        // The released port is the lowest free one again, so the next swarm reuses it.
+        assert_eq!(allocator.allocate("swarm-3").unwrap(), port_1);
+        assert_eq!(allocator.get_port("swarm-2"), Some(port_2));
     }
 
     #[test]
