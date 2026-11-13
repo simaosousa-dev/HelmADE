@@ -40,10 +40,13 @@ pub fn send_macos_notification(
     #[cfg(target_os = "macos")]
     {
         std::thread::spawn(move || {
-            let _ = std::process::Command::new("osascript")
+            if let Err(err) = std::process::Command::new("osascript")
                 .arg("-e")
                 .arg(&script)
-                .output();
+                .output()
+            {
+                eprintln!("[helmade] osascript notification failed: {err}");
+            }
         });
         Ok(())
     }

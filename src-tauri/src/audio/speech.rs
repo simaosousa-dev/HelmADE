@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
 /// Status de permissão de privacidade para microfone ou reconhecimento de fala.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -120,11 +120,11 @@ extern "C" fn on_transcription_c(
         .to_string_lossy()
         .into_owned();
 
-    let ctx_opt = GLOBAL_CONTEXT.lock().unwrap().clone();
+    let ctx_opt = GLOBAL_CONTEXT.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
     if let Some(ctx) = ctx_opt {
         let now = Instant::now();
         let latency_ms = {
-            let mut last_time = ctx.last_transcription_time.lock().unwrap();
+            let mut last_time = ctx.last_transcription_time.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             let dur = match *last_time {
                 Some(prev) => now.duration_since(prev),
                 None => now.duration_since(ctx.start_time),
@@ -145,7 +145,7 @@ extern "C" fn on_transcription_c(
             timestamp: now_unix,
         };
 
-        let _ = ctx.app_handle.emit("helmvoice://transcription", &event);
+        crate::events::emit(&ctx.app_handle, "helmvoice://transcription", &event);
     }
 }
 
@@ -163,13 +163,13 @@ extern "C" fn on_error_c(
         format!("Native speech recognition error {}", error_code)
     };
 
-    let ctx_opt = GLOBAL_CONTEXT.lock().unwrap().clone();
+    let ctx_opt = GLOBAL_CONTEXT.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
     if let Some(ctx) = ctx_opt {
         let payload = VoiceErrorPayload {
             code: format!("ERR_MAC_SPEECH_{}", error_code),
             message: msg,
         };
-        let _ = ctx.app_handle.emit("helmvoice://error", &payload);
+        crate::events::emit(&ctx.app_handle, "helmvoice://error", &payload);
     }
 }
 
@@ -237,29 +237,39 @@ impl VoiceManager {
             use std::sync::mpsc::channel;
             use std::time::Duration;
 
-            // 1. Pede permissão de reconhecimento de fala
-            let (tx_speech, rx_speech) = channel::<ffi::HelmVoicePermissionStatus>();
-            extern "C" fn speech_cb(status: ffi::HelmVoicePermissionStatus, user_data: *mut std::os::raw::c_void) {
-                let sender = unsafe { &*(user_data as *const std::sync::mpsc::Sender<ffi::HelmVoicePermissionStatus>) };
-                let _ = sender.send(status);
+            type StatusSender = std::sync::mpsc::Sender<ffi::HelmVoicePermissionStatus>;
+
+            // The system calls back whenever the user answers the prompt, possibly long after
+            // this function gave up waiting. The callback therefore owns the sender (boxed and
+            // reclaimed exactly once) instead of borrowing one from this stack frame.
+            extern "C" fn permission_cb(
+                status: ffi::HelmVoicePermissionStatus,
+                user_data: *mut std::os::raw::c_void,
+            ) {
+                // SAFETY: `user_data` is the `Box<StatusSender>` leaked below and the system
+                // invokes each permission callback once.
+                let sender = unsafe { Box::from_raw(user_data as *mut StatusSender) };
+                if sender.send(status).is_err() {
+                    // The requester stopped waiting; the status is re-queried on the next check.
+                    eprintln!("[helmade] permission answer arrived after the wait ended");
+                }
             }
 
-            unsafe {
-                ffi::helmvoice_request_speech_permission(speech_cb, &tx_speech as *const _ as *mut _);
-            }
-            let _ = rx_speech.recv_timeout(Duration::from_secs(10));
+            let wait_for_answer = |request: unsafe extern "C" fn(
+                extern "C" fn(ffi::HelmVoicePermissionStatus, *mut std::os::raw::c_void),
+                *mut std::os::raw::c_void,
+            )| {
+                let (tx, rx) = channel::<ffi::HelmVoicePermissionStatus>();
+                let user_data = Box::into_raw(Box::new(tx)) as *mut std::os::raw::c_void;
+                // SAFETY: the callback takes ownership of `user_data` as described above.
+                unsafe { request(permission_cb, user_data) };
+                if rx.recv_timeout(Duration::from_secs(10)).is_err() {
+                    eprintln!("[helmade] permission prompt not answered within 10s");
+                }
+            };
 
-            // 2. Pede permissão de microfone
-            let (tx_mic, rx_mic) = channel::<ffi::HelmVoicePermissionStatus>();
-            extern "C" fn mic_cb(status: ffi::HelmVoicePermissionStatus, user_data: *mut std::os::raw::c_void) {
-                let sender = unsafe { &*(user_data as *const std::sync::mpsc::Sender<ffi::HelmVoicePermissionStatus>) };
-                let _ = sender.send(status);
-            }
-
-            unsafe {
-                ffi::helmvoice_request_microphone_permission(mic_cb, &tx_mic as *const _ as *mut _);
-            }
-            let _ = rx_mic.recv_timeout(Duration::from_secs(10));
+            wait_for_answer(ffi::helmvoice_request_speech_permission);
+            wait_for_answer(ffi::helmvoice_request_microphone_permission);
 
             Ok(self.check_permissions())
         }
@@ -320,7 +330,7 @@ impl VoiceManager {
             });
 
             {
-                let mut global = GLOBAL_CONTEXT.lock().unwrap();
+                let mut global = GLOBAL_CONTEXT.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 *global = Some(context);
             }
 
@@ -340,7 +350,7 @@ impl VoiceManager {
             match res {
                 0 => {
                     let status = self.get_status();
-                    let _ = app_handle.emit("helmvoice://status", &status);
+                    crate::events::emit(&app_handle, "helmvoice://status", &status);
                     Ok(status)
                 }
                 1 => Err("A transcrição HelmVoice já se encontra em execução".to_string()),
@@ -367,13 +377,13 @@ impl VoiceManager {
         {
             let res = unsafe { ffi::helmvoice_stop_recognition() };
             {
-                let mut global = GLOBAL_CONTEXT.lock().unwrap();
+                let mut global = GLOBAL_CONTEXT.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 *global = None;
             }
 
             let status = self.get_status();
             if let Some(handle) = app_handle {
-                let _ = handle.emit("helmvoice://status", &status);
+                crate::events::emit(handle, "helmvoice://status", &status);
             }
 
             if res == 0 || res == 6 {

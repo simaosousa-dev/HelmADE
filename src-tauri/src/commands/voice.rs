@@ -2,6 +2,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 use crate::audio::{VoiceEngineStatus, VoiceManager, VoicePermissionState};
+use crate::error::{HelmError, HelmResult};
 
 /// Estado gerenciado no Tauri runtime para o subsistema de voz HelmVoice.
 pub type VoiceState = Arc<VoiceManager>;
@@ -10,7 +11,7 @@ pub type VoiceState = Arc<VoiceManager>;
 #[tauri::command]
 pub fn check_voice_permissions(
     state: State<'_, VoiceState>,
-) -> Result<VoicePermissionState, String> {
+) -> HelmResult<VoicePermissionState> {
     Ok(state.check_permissions())
 }
 
@@ -18,8 +19,8 @@ pub fn check_voice_permissions(
 #[tauri::command]
 pub fn request_voice_permissions(
     state: State<'_, VoiceState>,
-) -> Result<VoicePermissionState, String> {
-    state.request_permissions()
+) -> HelmResult<VoicePermissionState> {
+    state.request_permissions().map_err(HelmError::unavailable)
 }
 
 /// Inicia o motor de reconhecimento de voz com baixa latência e streaming para o frontend.
@@ -29,8 +30,10 @@ pub fn start_voice_transcription(
     state: State<'_, VoiceState>,
     locale: Option<String>,
     on_device_only: Option<bool>,
-) -> Result<VoiceEngineStatus, String> {
-    state.start_transcription(app, locale, on_device_only)
+) -> HelmResult<VoiceEngineStatus> {
+    state
+        .start_transcription(app, locale, on_device_only)
+        .map_err(HelmError::unavailable)
 }
 
 /// Pára a gravação e reconhecimento de voz libertando os recursos de áudio.
@@ -38,13 +41,13 @@ pub fn start_voice_transcription(
 pub fn stop_voice_transcription(
     app: AppHandle,
     state: State<'_, VoiceState>,
-) -> Result<VoiceEngineStatus, String> {
-    state.stop_transcription(Some(&app))
+) -> HelmResult<VoiceEngineStatus> {
+    state.stop_transcription(Some(&app)).map_err(HelmError::unavailable)
 }
 
 /// Retorna o estado atual do motor de reconhecimento de voz (ouvindo, locale, suporte on-device).
 #[tauri::command]
-pub fn get_voice_status(state: State<'_, VoiceState>) -> Result<VoiceEngineStatus, String> {
+pub fn get_voice_status(state: State<'_, VoiceState>) -> HelmResult<VoiceEngineStatus> {
     Ok(state.get_status())
 }
 
@@ -53,6 +56,6 @@ pub fn get_voice_status(state: State<'_, VoiceState>) -> Result<VoiceEngineStatu
 pub fn is_on_device_speech_supported(
     state: State<'_, VoiceState>,
     locale: Option<String>,
-) -> Result<bool, String> {
+) -> HelmResult<bool> {
     Ok(state.is_on_device_supported(locale.as_deref()))
 }

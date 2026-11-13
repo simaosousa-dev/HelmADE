@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
 use crate::browser::sniffer::strip_ansi;
 use crate::notifications::macos::send_macos_notification;
@@ -247,15 +247,19 @@ impl IdleDetector {
 
             // Emite evento IPC e notificação nativa apenas se for um bloqueio novo
             if !was_already_blocked {
-                let _ = app_handle.emit("pty-blocked-prompt", &prompt);
+                crate::events::emit(app_handle, "pty-blocked-prompt", &prompt);
 
-                let sub = format!("Terminal [{}] à espera de confirmação", session_id);
-                let _ = send_macos_notification(
-                    "HelmADE • Ação Necessária",
-                    Some(&sub),
+                // Session ids are `<swarm>-<panel key>`; the panel key is what the user recognises.
+                let panel = session_id.split_once('-').map_or(session_id, |(_, key)| key);
+                let subtitle = format!("O agente «{panel}» está à espera de resposta");
+                if let Err(err) = send_macos_notification(
+                    "HelmADE • Ação necessária",
+                    Some(&subtitle),
                     &prompt.prompt_text,
                     true,
-                );
+                ) {
+                    eprintln!("[helmade] notification failed: {err}");
+                }
             }
         } else if tracking.state == SessionIdleState::Blocked {
             // Se já estava bloqueado mas o novo chunk não é um prompt e tem quebras de linha normais,
@@ -264,12 +268,12 @@ impl IdleDetector {
             if clean.contains('\n') {
                 tracking.state = SessionIdleState::Active;
                 tracking.blocked_prompt = None;
-                let _ = app_handle.emit("pty-blocked-cleared", serde_json::json!({ "sessionId": session_id }));
+                crate::events::emit(app_handle, "pty-blocked-cleared", serde_json::json!({ "sessionId": session_id }));
             }
         } else if tracking.state == SessionIdleState::Standby {
             // Sai do standby automaticamente ao receber nova saída
             tracking.state = SessionIdleState::Active;
-            let _ = app_handle.emit("pty-standby-changed", serde_json::json!({
+            crate::events::emit(app_handle, "pty-standby-changed", serde_json::json!({
                 "sessionId": session_id,
                 "state": "active",
                 "isStandby": false
@@ -291,10 +295,10 @@ impl IdleDetector {
             if tracking.state == SessionIdleState::Blocked {
                 tracking.state = SessionIdleState::Active;
                 tracking.blocked_prompt = None;
-                let _ = app_handle.emit("pty-blocked-cleared", serde_json::json!({ "sessionId": session_id }));
+                crate::events::emit(app_handle, "pty-blocked-cleared", serde_json::json!({ "sessionId": session_id }));
             } else if tracking.state == SessionIdleState::Standby {
                 tracking.state = SessionIdleState::Active;
-                let _ = app_handle.emit("pty-standby-changed", serde_json::json!({
+                crate::events::emit(app_handle, "pty-standby-changed", serde_json::json!({
                     "sessionId": session_id,
                     "state": "active",
                     "isStandby": false
@@ -321,7 +325,7 @@ impl IdleDetector {
             tracking.state = SessionIdleState::Active;
             tracking.blocked_prompt = None;
             tracking.last_active_at = now_ms();
-            let _ = app_handle.emit("pty-blocked-cleared", serde_json::json!({ "sessionId": session_id }));
+            crate::events::emit(app_handle, "pty-blocked-cleared", serde_json::json!({ "sessionId": session_id }));
         }
     }
 
@@ -346,7 +350,7 @@ impl IdleDetector {
             SessionIdleState::Active
         };
 
-        let _ = app_handle.emit("pty-standby-changed", serde_json::json!({
+        crate::events::emit(app_handle, "pty-standby-changed", serde_json::json!({
             "sessionId": session_id,
             "state": if standby { "standby" } else { "active" },
             "isStandby": standby
@@ -427,7 +431,7 @@ impl IdleDetector {
         }
 
         for id in to_standby {
-            let _ = app_handle.emit("pty-standby-changed", serde_json::json!({
+            crate::events::emit(app_handle, "pty-standby-changed", serde_json::json!({
                 "sessionId": id,
                 "state": "standby",
                 "isStandby": true

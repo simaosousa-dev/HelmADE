@@ -7,6 +7,7 @@ pub mod db;
 #[cfg(feature = "e2e-bridge")]
 pub mod e2e_bridge;
 pub mod error;
+pub mod events;
 pub mod git;
 pub mod network;
 pub mod notifications;

@@ -1,4 +1,5 @@
 use crate::agents::{get_agent_by_id, scan_agent_directories, AgentDefinition};
+use crate::error::{HelmError, HelmResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -17,7 +18,7 @@ pub struct OllamaStatus {
 #[tauri::command]
 pub fn list_discovered_agents(
     project_path: Option<String>,
-) -> Result<Vec<AgentDefinition>, String> {
+) -> HelmResult<Vec<AgentDefinition>> {
     let path_ref = project_path.as_deref().map(Path::new);
     Ok(scan_agent_directories(path_ref))
 }
@@ -26,10 +27,10 @@ pub fn list_discovered_agents(
 pub fn get_agent_details(
     agent_id: String,
     project_path: Option<String>,
-) -> Result<AgentDefinition, String> {
+) -> HelmResult<AgentDefinition> {
     let path_ref = project_path.as_deref().map(Path::new);
     get_agent_by_id(&agent_id, path_ref)
-        .ok_or_else(|| format!("Agente '{}' não foi encontrado", agent_id))
+        .ok_or_else(|| HelmError::not_found("Persona de agente não encontrada"))
 }
 
 /// Marker printed for every binary found, so shell start-up noise cannot be mistaken for a result.
@@ -70,17 +71,17 @@ pub fn detect_binaries(binaries: &[String]) -> Result<HashMap<String, bool>, Str
 }
 
 #[tauri::command]
-pub fn detect_agent_clis(binaries: Vec<String>) -> Result<HashMap<String, bool>, String> {
+pub fn detect_agent_clis(binaries: Vec<String>) -> HelmResult<HashMap<String, bool>> {
     // End-to-end tests replace every agent CLI with a stub, so all of them count as installed.
     #[cfg(feature = "e2e-bridge")]
     if crate::e2e_bridge::agent_stub().is_some() {
         return Ok(binaries.into_iter().map(|name| (name, true)).collect());
     }
-    detect_binaries(&binaries)
+    detect_binaries(&binaries).map_err(HelmError::unavailable)
 }
 
 #[tauri::command]
-pub fn check_ollama_status(endpoint: Option<String>) -> Result<OllamaStatus, String> {
+pub fn check_ollama_status(endpoint: Option<String>) -> HelmResult<OllamaStatus> {
     let raw_endpoint = endpoint.unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
     let clean_addr = raw_endpoint
         .trim_start_matches("http://")
@@ -128,8 +129,14 @@ pub fn check_ollama_status(endpoint: Option<String>) -> Result<OllamaStatus, Str
         }
     };
 
-    let _ = stream.set_read_timeout(Some(timeout));
-    let _ = stream.set_write_timeout(Some(timeout));
+    if stream.set_read_timeout(Some(timeout)).is_err() || stream.set_write_timeout(Some(timeout)).is_err() {
+        return Ok(OllamaStatus {
+            is_running: true,
+            endpoint: raw_endpoint,
+            models: vec![],
+            message: Some("Ligação estabelecida, mas não foi possível configurá-la".to_string()),
+        });
+    }
 
     let request = format!(
         "GET /api/tags HTTP/1.1\r\nHost: {}\r\nUser-Agent: HelmADE\r\nConnection: close\r\n\r\n",
@@ -146,7 +153,8 @@ pub fn check_ollama_status(endpoint: Option<String>) -> Result<OllamaStatus, Str
     }
 
     let mut response_buf = Vec::new();
-    let _ = stream.read_to_end(&mut response_buf);
+    // A timeout still leaves whatever arrived in the buffer; the model list is parsed from that.
+    let incomplete = stream.read_to_end(&mut response_buf).is_err();
     let response_str = String::from_utf8_lossy(&response_buf);
 
     let mut models = Vec::new();
@@ -167,7 +175,7 @@ pub fn check_ollama_status(endpoint: Option<String>) -> Result<OllamaStatus, Str
         is_running: true,
         endpoint: raw_endpoint,
         models,
-        message: None,
+        message: incomplete.then(|| "Resposta incompleta do Ollama".to_string()),
     })
 }
 
