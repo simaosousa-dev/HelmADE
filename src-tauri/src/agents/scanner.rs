@@ -214,7 +214,7 @@ Project devops prompt
         .unwrap();
 
         // Perform internal scan
-        let results = scan_directories_internal(&[global_dir.clone()], Some(&project_dir));
+        let results = scan_directories_internal(std::slice::from_ref(&global_dir), Some(&project_dir));
 
         assert_eq!(results.len(), 2, "Should discover exactly 2 distinct agents");
 

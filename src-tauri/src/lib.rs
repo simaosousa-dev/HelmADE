@@ -6,7 +6,6 @@ pub mod db;
 pub mod git;
 pub mod network;
 pub mod notifications;
-pub mod pty;
 pub mod terminal;
 
 use agents::router::{MessageRouter, MessageRouterState};

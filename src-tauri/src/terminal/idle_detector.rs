@@ -89,8 +89,7 @@ pub fn detect_prompt_heuristic(chunk: &str, session_id: &str) -> Option<BlockedP
     // Obtém a última linha do chunk
     let last_line = clean
         .lines()
-        .filter(|l| !l.trim().is_empty())
-        .last()
+        .rfind(|l| !l.trim().is_empty())
         .unwrap_or("")
         .trim();
 

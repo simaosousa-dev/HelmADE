@@ -1,5 +1,5 @@
-/// Módulo de integração de notificações nativas do macOS para o HelmADE.
-/// Utiliza `osascript` em thread não-bloqueante para emitir alertas com sons do sistema.
+//! Módulo de integração de notificações nativas do macOS para o HelmADE.
+//! Utiliza `osascript` em thread não-bloqueante para emitir alertas com sons do sistema.
 
 /// Formata o script AppleScript com escape estrito de aspas e barras invertidas.
 pub fn build_applescript_command(

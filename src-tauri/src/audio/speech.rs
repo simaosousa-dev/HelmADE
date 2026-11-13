@@ -4,19 +4,14 @@ use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 
 /// Status de permissão de privacidade para microfone ou reconhecimento de fala.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PermissionStatus {
+    #[default]
     NotDetermined,
     Restricted,
     Denied,
     Authorized,
-}
-
-impl Default for PermissionStatus {
-    fn default() -> Self {
-        Self::NotDetermined
-    }
 }
 
 /// Estado agregado de permissões para o subsistema HelmVoice.
