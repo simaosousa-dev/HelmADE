@@ -34,20 +34,23 @@
 
 | Dependency | Why |
 |------------|-----|
-| _(filled as they land)_ | |
+| `vitest` (dev, MIT) | real test runner replacing 5 hand-rolled node scripts |
+| `regex` (MIT/Apache) | linear-time secret patterns for the Streamer Shield and path masking in errors |
+| `libc` (MIT/Apache) | process-group signalling so closing a panel leaves no orphan processes (already a transitive dependency) |
+| `tauri-plugin-global-shortcut` (MIT/Apache, official) | system-wide push-to-talk (B7) |
 
 ## Backlog (ordered; `todo` / `doing` / `done <sha>` / `blocked`)
 
 ### A. Foundations
-- **A1** `todo` Vitest adopted; the 5 node-script tests converted; `npm test` runs Vitest.
+- **A1** `done e4c751a` Vitest adopted; the 5 node-script tests converted; `npm test` runs Vitest.
   - AC: `npm test` runs `vitest run`, all former assertions preserved, no `node --experimental-strip-types` scripts left.
-- **A2** `todo` Clippy clean (`-D warnings`), duplicate `src-tauri/src/pty/` module removed.
-- **A3** `todo` CI runs typecheck, Vitest, build, `cargo test`, clippy.
+- **A2** `done 6f835eb` Clippy clean (`-D warnings`), duplicate `src-tauri/src/pty/` module removed.
+- **A3** `done 4bbf1a1` CI runs typecheck, Vitest, build, `cargo test`, clippy.
 
 ### B. Core loop (Must)
-- **B1** `todo` Backend swarm lifecycle: `launch`/`close` primitives create one worktree per agent, symlink deps, allocate a port per agent, clean everything on close; typed errors.
+- **B1** `done 665fc4e` Backend swarm lifecycle: `launch`/`close` primitives create one worktree per agent, symlink deps, allocate a port per agent, clean everything on close; typed errors.
   - AC: cargo integration test creates a 4-agent swarm in a temp repo → 4 worktrees, 4 `helm/swarm-*` branches, symlinked `node_modules`, 4 distinct ports; close removes all of them.
-- **B2** `todo` PTY engine: spawn with explicit command (agent CLI via login shell `exec`), exit event, raw byte-capped scrollback replay, output coalescing, kill-all on app quit.
+- **B2** `done e77e54e` (benchmark numbers still pending) PTY engine: spawn with explicit command (agent CLI via login shell `exec`), exit event, raw byte-capped scrollback replay, output coalescing, kill-all on app quit.
   - AC: tests for exit event + kill-all; no orphan child processes after quit; 16-terminal throughput/latency measured and recorded below.
 - **B3** `todo` Frontend swarm store with tabs (multiple swarms per project), launcher rewritten on B1/B2, 4-agent preset, agent CLI catalog + detection, auto-approve option (R8.3).
   - AC: launching a preset shows panels whose `cwd` is the agent worktree; `Cmd+T` opens the launcher; tabs switch swarms without killing PTYs.
@@ -55,16 +58,16 @@
   - AC: no hardcoded swarm id; merge of one agent leaves the others intact; merged agent's worktree is gone.
 - **B5** `todo` Persistence + restore (SQLite): swarms, panels, layout, active tab, A2A history, settings. Restart restores tabs and respawns PTYs in existing worktrees.
   - AC: cargo tests for the repository layer; E2E restart test.
-- **B6** `todo` A2A channel: Unix socket + `helm` CLI (`send`, `broadcast`, `peers`, `inbox`), PTY injection for agents, display mirror for shells, protocol paragraph appended to personas.
+- **B6** `doing` (backend done 164b527; frontend wiring + persona protocol note pending) A2A channel: Unix socket + `helm` CLI (`send`, `broadcast`, `peers`, `inbox`), PTY injection for agents, display mirror for shells, protocol paragraph appended to personas.
   - AC: cargo test sends through the socket and observes router history + injection; E2E shows the message in Team Wire.
 - **B7** `todo` Global push-to-talk via `tauri-plugin-global-shortcut` (works when the app is not focused), configurable, persisted.
 - **B8** `todo` Close/quit hygiene: closing a swarm asks keep vs discard; orphan worktree reconciliation on project open.
 
 ### C. Security (Must)
-- **C1** `todo` Streamer Shield (task 6.3): `security/redactor.rs`, ≥50 secret formats, terminal + Team Wire + scrollback, private path masking, toggle + shortcut.
+- **C1** `doing` (redactor + sink + scrollback + Team Wire done 9f05b4b; UI toggle pending) Streamer Shield (task 6.3): `security/redactor.rs`, ≥50 secret formats, terminal + Team Wire + scrollback, private path masking, toggle + shortcut.
   - AC: cargo suite with ≥50 formats × chunk-split positions → zero leaks.
 - **C2** `todo` Real CSP in `tauri.conf.json`; capabilities least-privilege.
-- **C3** `todo` Typed backend errors; no internal paths / stack traces in errors returned to the frontend; no `unwrap`/`expect` on runtime paths.
+- **C3** `doing` (HelmError on project/swarm/terminal/worktree/message/settings; agents/browser/voice/shortcuts commands still return String) Typed backend errors; no internal paths / stack traces in errors returned to the frontend; no `unwrap`/`expect` on runtime paths.
 
 ### D. Remaining roadmap features (Must)
 - **D1** `todo` Telemetry / cost dashboard (task 6.2) from local CLI transcripts; filters by day / swarm / agent; USD + EUR.
@@ -84,10 +87,47 @@
 - **F2** `todo` Release workflow (task 8.2).
 - **F3** `todo` README, `docs/USER_GUIDE.md`, `CHANGELOG.md`, `project-brain.md`, ADR index, competitive-analysis final update, local tag `v1.0.0` (task 8.3).
 
+## Backend contract the frontend builds on (landed in 87de5cf)
+
+- **Ids**: `swarmId` ≤ 16 chars `[A-Za-z0-9_-]`; panel `key` ≤ 40 chars, unique per swarm.
+  `worktreeId = "<swarmId>-<key>"` is also the **PTY session id**, the port key and the
+  `grid_panels.id`. Branch = `helm/swarm-<worktreeId>`, dir = `<repo>/.helm/worktrees/<worktreeId>`.
+- **Errors**: every command rejects with `{ code, message }` (`HelmError`); `message` is user-facing PT-PT.
+- **Commands**
+  - `provision_swarm { repoPath, swarmId, panelKeys } → { swarmId, baseBranch, agents: [{ panelKey, worktreeId, branch, path, port, env }] }` (all or nothing)
+  - `restore_agent_workspace { repoPath, swarmId, panelKey } → AgentWorkspace` (NotFound when the worktree is gone)
+  - `release_agent_workspace { repoPath, worktreeId, deleteBranch }` (kills the PTY, frees the port, removes the worktree)
+  - `save_swarm { swarm }`, `list_swarms { projectId }`, `delete_swarm { swarmId }`, `list_orphan_worktrees { repoPath, projectId }`
+    — `SwarmRecord { id, projectId, name, presetId, layout, baseBranch, autoApprove, position, createdAt, panels: [{ key, title, agentId, role, color, kind: 'agent'|'shell', cli, modelId, worktreeId, worktreePath, branch, port }] }`
+  - `spawn_pty { sessionId, cwd, command?: string[], cols, rows, env }` — `command` is exec'd through a login shell
+    (agent CLI, no shell underneath); without it a login shell. Backend adds `HELM_SOCK`, `HELMADE_CLI`, `PATH`.
+  - `kill_pty`, `is_pty_alive`, `get_pty_scrollback → string` (raw stream, shielded), `write_pty`, `resize_pty`
+  - `get_worktree_diff / get_file_diff / merge_worktree { repoPath, swarmId: <worktreeId>, baseBranch }`, `abort_merge`
+  - `send_a2a_message { message: { swarmId, senderId: 'user'|<key>, recipient, content, messageType? } } → A2AMessage`
+  - `get_a2a_history { swarmId, limit }`, `register_swarm_peers { swarmId, peers: [{ id, name, role, agentId, sessionId, kind }] }`
+  - `get_setting / set_setting`, `get_shield_config / set_shield_config { config: { maskSecrets, streamerMode } }`
+- **Events**: `pty-output-<sessionId>` (string), `pty-exit` `{ sessionId, exitCode }`, `a2a://message` (A2AMessage),
+  `pty-blocked-prompt`, `pty-blocked-cleared`, `pty-standby-changed`, `devserver-detected`.
+- **Panel env the frontend must set**: `HELM_SWARM_ID`, `HELM_AGENT_KEY` (panel key) — required by the `helmade` CLI —
+  plus the workspace `env` returned by provisioning (PORT…).
+- **CLI inside panels**: `helmade send <to> <msg…>` / `send <to> -` (stdin) / `broadcast` / `peers` / `inbox [n]` / `whoami`.
+  Named `helmade` (not `helm`) to avoid colliding with Kubernetes Helm.
+- **A2A delivery rules**: human → any panel: typed verbatim + Enter. agent → agent: typed as `[A2A de @Sender] …`.
+  agent → shell: display only (never executed). Team Wire copy is shielded; the recipient gets the original.
+- **Removed commands** (frontend callers must go): `create_worktree`, `remove_worktree`, `list_worktrees`,
+  `symlink_dependencies`, `allocate_swarm_port`, `release_swarm_port`, `get_swarm_port`, `get_swarm_env_vars`,
+  `register_a2a_pty_mirror`, `unregister_a2a_pty_mirror`.
+- The backend commit series e1fa3a6..87de5cf lands together: the build is green at its tip, not at each step.
+
 ## Done
 
 | Item | Commit | Evidence |
 |------|--------|----------|
+| Research + ledger | 36f783c | `docs/research/competitive-analysis.md` |
+| A1 Vitest | e4c751a | `npm test` → 5 files, 27 tests passed |
+| A2 clippy + pty module | 6f835eb | `cargo clippy --all-targets -- -D warnings` exit 0 |
+| A3 CI | 4bbf1a1 | workflow runs typecheck, vitest, build, clippy, cargo test |
+| Backend core (B1, B2, B6-backend, C1-backend, DB) | e1fa3a6..87de5cf | `cargo test` → 116 passed (3 consecutive runs), clippy exit 0, no orphan `sleep`/`cat` processes after the suite |
 
 ## Measurements
 
