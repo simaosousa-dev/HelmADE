@@ -48,6 +48,7 @@ export class AppUnderTest {
         HELMADE_HOME: this.home,
         HELMADE_E2E_BRIDGE_PORT: String(BRIDGE_PORT),
         HELMADE_E2E_AGENT_STUB: AGENT_STUB,
+        HELMADE_DISABLE_GLOBAL_SHORTCUT: '1',
       },
       stdio: ['ignore', 'inherit', 'inherit'],
     });

@@ -7,6 +7,12 @@ export interface ShieldConfig {
   streamerMode: boolean;
 }
 
+export interface ShortcutConfig {
+  /** Accelerator such as `Alt+Space` or `Command+Shift+V`. */
+  pushToTalk: string;
+  enabled: boolean;
+}
+
 export const settingsService = {
   get(key: string): Promise<string | null> {
     return invoke<string | null>('get_setting', { key });
@@ -22,5 +28,14 @@ export const settingsService = {
 
   setShieldConfig(config: ShieldConfig): Promise<ShieldConfig> {
     return invoke<ShieldConfig>('set_shield_config', { config });
+  },
+
+  getShortcutConfig(): Promise<ShortcutConfig> {
+    return invoke<ShortcutConfig>('get_shortcut_config');
+  },
+
+  /** Re-registers the system-wide push-to-talk shortcut. Rejects when the OS refuses it. */
+  updateShortcutConfig(config: ShortcutConfig): Promise<ShortcutConfig> {
+    return invoke<ShortcutConfig>('update_shortcut_config', { config });
   },
 };

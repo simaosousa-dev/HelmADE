@@ -83,4 +83,19 @@ export const voiceService = {
   ): Promise<UnlistenFn> {
     return listen<VoiceErrorPayload>('helmvoice://error', callback);
   },
+
+  /**
+   * Subscreve o atalho global de push-to-talk (premir e soltar), emitido pelo backend
+   * mesmo quando o HelmADE não é a aplicação em primeiro plano.
+   */
+  async onPushToTalk(onPressed: () => void, onReleased: () => void): Promise<UnlistenFn> {
+    const [stopPressed, stopReleased] = await Promise.all([
+      listen<null>('ptt://pressed', onPressed),
+      listen<null>('ptt://released', onReleased),
+    ]);
+    return () => {
+      stopPressed();
+      stopReleased();
+    };
+  },
 };

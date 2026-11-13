@@ -2,15 +2,6 @@
  * Tipagens estritas para atalhos de teclado e subsistema Push-to-Talk.
  */
 
-export interface ShortcutConfig {
-  /** Tecla ou combinação de atalho push-to-talk (ex: 'Option+Space', 'Alt+Space') */
-  pushToTalk: string;
-  /** Ativação geral dos atalhos nativos */
-  enabled: boolean;
-  /** Feedback sonoro ao ativar/desativar */
-  soundFeedback?: boolean;
-}
-
 export interface PushToTalkState {
   /** Se o atalho está atualmente premido (keydown mantido) */
   isActive: boolean;
@@ -25,8 +16,6 @@ export interface PushToTalkState {
 }
 
 export interface PushToTalkOptions {
-  /** Atalho a escutar (padrão: 'Alt+Space' / 'Option+Space') */
-  shortcut?: string;
   /** Se deve aplicar o dicionário fonético de código automaticamente */
   applyPhonetics?: boolean;
   /** Se deve injetar automaticamente o texto no draft prompt do TeamWire */

@@ -15,7 +15,7 @@ pub mod security;
 pub mod swarm;
 pub mod terminal;
 
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tauri::{Emitter, Manager, RunEvent};
@@ -26,7 +26,7 @@ use browser::PortSniffer;
 use commands::browser::BrowserState;
 use commands::project::DbHandle;
 use commands::settings::SHIELD_SETTING_KEY;
-use commands::shortcuts::{ShortcutConfig, ShortcutState};
+use commands::shortcuts::{ShortcutConfig, ShortcutSettings, SHORTCUT_SETTING_KEY};
 use commands::swarm::PortState;
 use commands::terminal::{PtyState, RuntimeInfo, SinkState};
 use commands::voice::VoiceState;
@@ -46,6 +46,17 @@ fn load_shield_config(db: &DbState) -> ShieldConfig {
         Err(err) => {
             eprintln!("[helmade] could not read shield settings: {err}");
             ShieldConfig::default()
+        }
+    }
+}
+
+fn load_shortcut_config(db: &DbState) -> ShortcutConfig {
+    match db.get_setting(SHORTCUT_SETTING_KEY) {
+        Ok(Some(raw)) => serde_json::from_str(&raw).unwrap_or_default(),
+        Ok(None) => ShortcutConfig::default(),
+        Err(err) => {
+            eprintln!("[helmade] could not read shortcut settings: {err}");
+            ShortcutConfig::default()
         }
     }
 }
@@ -70,7 +81,7 @@ pub fn run() {
     let idle_state: IdleDetectorState = Arc::new(IdleDetector::new());
     let browser_state: BrowserState = Arc::new(PortSniffer::new());
     let voice_state: VoiceState = Arc::new(VoiceManager::new());
-    let shortcut_state: ShortcutState = Arc::new(RwLock::new(ShortcutConfig::default()));
+    let shortcut_config = load_shortcut_config(&db);
 
     let setup_db = Arc::clone(&db);
     let setup_shield = Arc::clone(&shield);
@@ -86,9 +97,10 @@ pub fn run() {
         .manage(idle_state)
         .manage(browser_state)
         .manage(voice_state)
-        .manage(shortcut_state)
+        .manage(ShortcutSettings(Mutex::new(shortcut_config.clone())))
         .manage(PortState::default())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(commands::shortcuts::plugin())
         .setup(move |app| {
             let handle = app.handle().clone();
             app.manage::<SinkState>(Arc::new(TauriSink::new(handle.clone())));
@@ -123,6 +135,13 @@ pub fn run() {
                 bin_dir,
                 cli,
             });
+
+            // Test runs must not grab a system-wide key on the developer's machine.
+            if std::env::var_os("HELMADE_DISABLE_GLOBAL_SHORTCUT").is_none() {
+                if let Err(err) = commands::shortcuts::apply(&handle, None, &shortcut_config) {
+                    eprintln!("[helmade] push-to-talk shortcut not registered: {err}");
+                }
+            }
 
             #[cfg(feature = "e2e-bridge")]
             e2e_bridge::start(handle.clone());
@@ -191,7 +210,6 @@ pub fn run() {
             // Shortcuts
             commands::shortcuts::get_shortcut_config,
             commands::shortcuts::update_shortcut_config,
-            commands::shortcuts::is_push_to_talk_available,
         ])
         .build(tauri::generate_context!())
         // Startup invariant: a broken bundle configuration cannot be recovered at runtime.

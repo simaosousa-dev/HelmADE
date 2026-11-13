@@ -5,21 +5,8 @@ import {
   getCodePhoneticRules,
   injectSpeechToPrompt,
 } from '../src/config/codePhonetics.ts';
-import type { ShortcutConfig, PushToTalkState } from '../src/types/shortcuts.ts';
 
-describe('pushToTalk', () => {
-  test('Verificação da Configuração de Atalhos e Tipagem', () => {
-    const defaultConfig: ShortcutConfig = {
-      pushToTalk: 'Option+Space',
-      enabled: true,
-      soundFeedback: false,
-    };
-
-    assert.equal(defaultConfig.pushToTalk, 'Option+Space');
-    assert.equal(defaultConfig.enabled, true);
-    assert.equal(defaultConfig.soundFeedback, false);
-  });
-
+describe('code phonetics for dictation', () => {
   test('Verificação do Dicionário de Correção Fonética de Código', () => {
     const rules = getCodePhoneticRules();
     assert.ok(rules.length >= 20, 'O dicionário deve conter pelo menos 20 regras fonéticas');
@@ -64,23 +51,6 @@ describe('pushToTalk', () => {
     assert.ok(
       avgMsPerPass < 1.0,
       `O processador fonético deve executar em < 1ms por chamada (média: ${avgMsPerPass.toFixed(3)}ms)`
-    );
-  });
-
-  test('Quality Gate de Latência Push-to-Talk (< 50ms)', () => {
-    const mockPttState: PushToTalkState = {
-      isActive: true,
-      isListening: true,
-      audioLevel: 0.75,
-      latencyMs: 18,
-      error: null,
-    };
-
-    assert.equal(mockPttState.isActive, true);
-    assert.equal(mockPttState.isListening, true);
-    assert.ok(
-      mockPttState.latencyMs < 50,
-      `Quality Gate: Latência de ativação deve ser inferior a 50ms (obtido: ${mockPttState.latencyMs}ms)`
     );
   });
 

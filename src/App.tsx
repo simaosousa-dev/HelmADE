@@ -12,6 +12,7 @@ import { SHORTCUTS, findShortcut, formatBinding } from './config/shortcuts';
 import { useAutoPortDetection } from './hooks/useAutoPortDetection';
 import { errorMessage } from './lib/ipc';
 import { gitDiffService } from './services/gitDiffService';
+import { settingsService, type ShortcutConfig } from './services/settingsService';
 import {
   closePanel,
   closeSwarm,
@@ -34,6 +35,13 @@ type CloseRequest =
   | { kind: 'swarm'; swarm: Swarm }
   | { kind: 'panel'; swarm: Swarm; panel: SwarmPanel }
   | { kind: 'orphans'; worktreeIds: string[] };
+
+/** System-wide push-to-talk accelerators offered in the command palette. */
+const PTT_PRESETS: Array<{ accelerator: string; label: string }> = [
+  { accelerator: 'Alt+Space', label: '⌥Espaço' },
+  { accelerator: 'Control+Alt+Space', label: '⌃⌥Espaço' },
+  { accelerator: 'Command+Shift+V', label: '⇧⌘V' },
+];
 
 function shortcutLabel(id: string): string {
   const binding = SHORTCUTS.find((shortcut) => shortcut.id === id)?.binding;
@@ -86,6 +94,7 @@ export default function App() {
   const [isReviewOpen, setReviewOpen] = useState(false);
   const [closeRequest, setCloseRequest] = useState<CloseRequest | null>(null);
   const [unmergedDetail, setUnmergedDetail] = useState<string | null>(null);
+  const [pttConfig, setPttConfig] = useState<ShortcutConfig | null>(null);
 
   const { swarms, activeSwarmId, lastError } = useSwarmStore();
   const { panels, activePanelId, maximizedPanelId } = useGridLayoutStore();
@@ -104,6 +113,10 @@ export default function App() {
     terminalStore.initListeners().then(keep).catch((e: unknown) => toastStore.error(errorMessage(e)));
     a2aStore.init().then(keep).catch((e: unknown) => toastStore.error(errorMessage(e)));
     shieldStore.load();
+    settingsService
+      .getShortcutConfig()
+      .then((config) => !disposed && setPttConfig(config))
+      .catch((e: unknown) => toastStore.error(errorMessage(e)));
     return () => {
       disposed = true;
       for (const cleanup of cleanups) cleanup();
@@ -232,6 +245,16 @@ export default function App() {
       .catch((error: unknown) => toastStore.error(errorMessage(error)));
   }, [project]);
 
+  const updatePtt = useCallback((config: ShortcutConfig, success: string) => {
+    settingsService
+      .updateShortcutConfig(config)
+      .then((applied) => {
+        setPttConfig(applied);
+        toastStore.push('success', success);
+      })
+      .catch((error: unknown) => toastStore.error(errorMessage(error)));
+  }, []);
+
   /** What each shortcut / palette command does. Missing ids are simply unavailable right now. */
   const handlers = useMemo<Record<string, (() => void) | undefined>>(() => {
     if (!project) return {};
@@ -259,6 +282,21 @@ export default function App() {
       'shield.mask': () => void shieldStore.toggleMaskSecrets(),
       'worktrees.clean': cleanOrphans,
     };
+    if (pttConfig) {
+      map['voice.global.toggle'] = () =>
+        updatePtt(
+          { ...pttConfig, enabled: !pttConfig.enabled },
+          pttConfig.enabled ? 'Atalho global de voz desligado.' : 'Atalho global de voz ligado.'
+        );
+      for (const preset of PTT_PRESETS) {
+        if (preset.accelerator === pttConfig.pushToTalk && pttConfig.enabled) continue;
+        map[`voice.global.${preset.accelerator}`] = () =>
+          updatePtt(
+            { pushToTalk: preset.accelerator, enabled: true },
+            `Atalho global de voz: ${preset.label}.`
+          );
+      }
+    }
     swarms.slice(0, 9).forEach((swarm, index) => {
       map[`swarm.goto.${index + 1}`] = () => swarmStore.setActiveSwarm(swarm.id);
     });
@@ -279,6 +317,8 @@ export default function App() {
     cleanOrphans,
     toggleWire,
     togglePreview,
+    pttConfig,
+    updatePtt,
   ]);
 
   // Global key handler, in the capture phase so shortcuts work while a terminal has focus.
@@ -306,12 +346,22 @@ export default function App() {
     const listed = [
       ...SHORTCUTS,
       { id: 'worktrees.clean', title: 'Limpar worktrees órfãos', section: 'Enxames' as const },
+      {
+        id: 'voice.global.toggle',
+        title: pttConfig?.enabled ? 'Desligar o atalho global de voz' : 'Ligar o atalho global de voz',
+        section: 'Voz' as const,
+      },
+      ...PTT_PRESETS.map((preset) => ({
+        id: `voice.global.${preset.accelerator}`,
+        title: `Usar ${preset.label} como atalho global de voz`,
+        section: 'Voz' as const,
+      })),
     ];
     return listed.flatMap((shortcut) => {
       const handler = handlers[shortcut.id];
       return handler ? [{ ...shortcut, run: handler }] : [];
     });
-  }, [handlers]);
+  }, [handlers, pttConfig]);
 
   if (!project) {
     return (

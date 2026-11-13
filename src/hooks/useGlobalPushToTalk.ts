@@ -8,14 +8,13 @@ import type { PushToTalkOptions, PushToTalkState } from '../types/shortcuts';
 export { injectSpeechToPrompt };
 
 /**
- * Hook global para interceção de atalho Push-to-Talk (Option+Space / Alt+Space),
- * controlo do motor de fala e injeção em tempo real com correção fonética de código.
+ * Hook de Push-to-Talk: reage ao atalho global do sistema (por omissão ⌥Espaço),
+ * controla o motor de fala e injeta o texto em tempo real com correção fonética de código.
  *
  * Quality Gate: Latência de ativação/desativação < 50ms.
  */
 export function useGlobalPushToTalk(options: PushToTalkOptions = {}) {
   const {
-    shortcut = 'Option+Space',
     applyPhonetics = true,
     autoInjectPrompt = true,
     onTranscription,
@@ -162,8 +161,8 @@ export function useGlobalPushToTalk(options: PushToTalkOptions = {}) {
           updateState({ error: err.message, isListening: false, isActive: false });
           stopAudioWaveAnimation();
         });
-      } catch {
-        // Ignora silenciosamente se o backend Tauri não estiver no modo desktop nativo
+      } catch (err) {
+        updateState({ error: errorMessage(err) });
       }
     };
 
@@ -176,55 +175,36 @@ export function useGlobalPushToTalk(options: PushToTalkOptions = {}) {
     };
   }, [applyPhonetics, autoInjectPrompt, onTranscription, stopAudioWaveAnimation, updateState]);
 
-  // Interceção de atalhos de teclado (Option+Space / Alt+Space)
+  // Atalho global do sistema: o backend regista-o e emite premir/soltar, pelo que a
+  // ditado funciona mesmo com outra aplicação em primeiro plano.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignora repetição automática da tecla
-      if (e.repeat) return;
+    let disposed = false;
+    let stop: (() => void) | undefined;
 
-      const isOptionOrAlt = e.altKey;
-      const isSpace = e.code === 'Space';
-
-      if (isOptionOrAlt && isSpace) {
-        e.preventDefault();
-        if (!isPressingRef.current) {
+    voiceService
+      .onPushToTalk(
+        () => {
+          if (isPressingRef.current) return;
           isPressingRef.current = true;
           void startListening();
-        }
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (isPressingRef.current) {
-        const isSpace = e.code === 'Space';
-        const isAlt = e.key === 'Alt' || e.code === 'AltLeft' || e.code === 'AltRight';
-
-        if (isSpace || isAlt || !e.altKey) {
-          e.preventDefault();
+        },
+        () => {
+          if (!isPressingRef.current) return;
           isPressingRef.current = false;
           void stopListening();
         }
-      }
-    };
-
-    // Salvaguarda: se a janela perder o foco (blur), parar escuta imediatamente
-    const handleWindowBlur = () => {
-      if (isPressingRef.current || stateRef.current.isListening) {
-        isPressingRef.current = false;
-        void stopListening();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown, { capture: true });
-    window.addEventListener('keyup', handleKeyUp, { capture: true });
-    window.addEventListener('blur', handleWindowBlur);
+      )
+      .then((unlisten) => {
+        if (disposed) unlisten();
+        else stop = unlisten;
+      })
+      .catch((err: unknown) => updateState({ error: errorMessage(err) }));
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown, { capture: true });
-      window.removeEventListener('keyup', handleKeyUp, { capture: true });
-      window.removeEventListener('blur', handleWindowBlur);
+      disposed = true;
+      stop?.();
     };
-  }, [shortcut, startListening, stopListening]);
+  }, [startListening, stopListening, updateState]);
 
   return {
     state,
