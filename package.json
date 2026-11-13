@@ -8,8 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "node --experimental-strip-types tests/previewStore.test.ts && node --experimental-strip-types tests/previewNavigation.test.ts && node --experimental-strip-types tests/voiceService.test.ts && node --experimental-strip-types tests/pushToTalk.test.ts && node --experimental-strip-types tests/idleDetector.test.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "test:watch": "vitest"
   },
   "commitlint": {
     "extends": [
@@ -17,22 +18,23 @@
     ]
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2",
-    "@xterm/xterm": "^5.5.0",
     "@xterm/addon-fit": "^0.10.0",
-    "@xterm/addon-webgl": "^0.18.0"
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/xterm": "^5.5.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4",
-    "@tailwindcss/vite": "^4",
     "tailwindcss": "^4",
     "typescript": "^5.5",
-    "vite": "^6"
+    "vite": "^6",
+    "vitest": "^3.2.7"
   }
 }

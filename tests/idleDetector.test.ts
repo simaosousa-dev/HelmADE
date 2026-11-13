@@ -1,63 +1,70 @@
+import { describe, test } from 'vitest';
 import assert from 'node:assert/strict';
 import { terminalStore } from '../src/stores/useTerminalStore.ts';
 import type { BlockedPromptInfo } from '../src/types/terminal.ts';
 
-// Test 1: Initial state
-terminalStore.reset();
-const initial = terminalStore.getState();
-assert.deepEqual(initial.blockedPrompts, {});
-assert.deepEqual(initial.standbySessions, {});
-assert.deepEqual(initial.sessionStatuses, {});
+describe('idleDetector', () => {
+  test('Initial state', () => {
+    terminalStore.reset();
+    const initial = terminalStore.getState();
+    assert.deepEqual(initial.blockedPrompts, {});
+    assert.deepEqual(initial.standbySessions, {});
+    assert.deepEqual(initial.sessionStatuses, {});
+  });
 
-// Test 2: Set blocked prompt
-const prompt1: BlockedPromptInfo = {
-  sessionId: 'pty-sess-1',
-  promptText: 'Do you want to continue? [Y/n]',
-  promptType: 'yes_no',
-  defaultChoice: 'y',
-  suggestedOptions: ['y', 'n'],
-  timestamp: Date.now(),
-};
+  test('Set blocked prompt', () => {
+    const prompt1: BlockedPromptInfo = {
+      sessionId: 'pty-sess-1',
+      promptText: 'Do you want to continue? [Y/n]',
+      promptType: 'yes_no',
+      defaultChoice: 'y',
+      suggestedOptions: ['y', 'n'],
+      timestamp: Date.now(),
+    };
 
-terminalStore.setBlockedPrompt('pty-sess-1', prompt1);
-const stateAfterBlocked = terminalStore.getState();
-assert.equal(stateAfterBlocked.sessionStatuses['pty-sess-1'], 'blocked');
-assert.deepEqual(stateAfterBlocked.blockedPrompts['pty-sess-1'], prompt1);
+    terminalStore.setBlockedPrompt('pty-sess-1', prompt1);
+    const stateAfterBlocked = terminalStore.getState();
+    assert.equal(stateAfterBlocked.sessionStatuses['pty-sess-1'], 'blocked');
+    assert.deepEqual(stateAfterBlocked.blockedPrompts['pty-sess-1'], prompt1);
+  });
 
-// Test 3: Clear blocked prompt
-terminalStore.clearBlockedPrompt('pty-sess-1');
-const stateAfterCleared = terminalStore.getState();
-assert.equal(stateAfterCleared.blockedPrompts['pty-sess-1'], undefined);
-assert.equal(stateAfterCleared.sessionStatuses['pty-sess-1'], 'running');
+  test('Clear blocked prompt', () => {
+    terminalStore.clearBlockedPrompt('pty-sess-1');
+    const stateAfterCleared = terminalStore.getState();
+    assert.equal(stateAfterCleared.blockedPrompts['pty-sess-1'], undefined);
+    assert.equal(stateAfterCleared.sessionStatuses['pty-sess-1'], 'running');
+  });
 
-// Test 4: Standby toggle and state tracking
-terminalStore.setStandby('pty-sess-2', true);
-let stateStandby = terminalStore.getState();
-assert.equal(stateStandby.standbySessions['pty-sess-2'], true);
-assert.equal(stateStandby.sessionStatuses['pty-sess-2'], 'standby');
+  test('Standby toggle and state tracking', () => {
+    terminalStore.setStandby('pty-sess-2', true);
+    let stateStandby = terminalStore.getState();
+    assert.equal(stateStandby.standbySessions['pty-sess-2'], true);
+    assert.equal(stateStandby.sessionStatuses['pty-sess-2'], 'standby');
 
-terminalStore.setStandby('pty-sess-2', false);
-stateStandby = terminalStore.getState();
-assert.equal(stateStandby.standbySessions['pty-sess-2'], false);
-assert.equal(stateStandby.sessionStatuses['pty-sess-2'], 'running');
+    terminalStore.setStandby('pty-sess-2', false);
+    stateStandby = terminalStore.getState();
+    assert.equal(stateStandby.standbySessions['pty-sess-2'], false);
+    assert.equal(stateStandby.sessionStatuses['pty-sess-2'], 'running');
+  });
 
-// Test 5: Blocked prompt on standby session returns to standby when cleared
-terminalStore.setStandby('pty-sess-3', true);
-terminalStore.setBlockedPrompt('pty-sess-3', {
-  sessionId: 'pty-sess-3',
-  promptText: 'Password:',
-  promptType: 'password',
-  suggestedOptions: [],
-  timestamp: Date.now(),
+  test('Blocked prompt on standby session returns to standby when cleared', () => {
+    terminalStore.setStandby('pty-sess-3', true);
+    terminalStore.setBlockedPrompt('pty-sess-3', {
+      sessionId: 'pty-sess-3',
+      promptText: 'Password:',
+      promptType: 'password',
+      suggestedOptions: [],
+      timestamp: Date.now(),
+    });
+    assert.equal(terminalStore.getState().sessionStatuses['pty-sess-3'], 'blocked');
+
+    terminalStore.clearBlockedPrompt('pty-sess-3');
+    assert.equal(terminalStore.getState().sessionStatuses['pty-sess-3'], 'standby');
+  });
+
+  test('Reset', () => {
+    terminalStore.reset();
+    assert.deepEqual(terminalStore.getState().blockedPrompts, {});
+    assert.deepEqual(terminalStore.getState().standbySessions, {});
+  });
 });
-assert.equal(terminalStore.getState().sessionStatuses['pty-sess-3'], 'blocked');
-
-terminalStore.clearBlockedPrompt('pty-sess-3');
-assert.equal(terminalStore.getState().sessionStatuses['pty-sess-3'], 'standby');
-
-// Test 6: Reset
-terminalStore.reset();
-assert.deepEqual(terminalStore.getState().blockedPrompts, {});
-assert.deepEqual(terminalStore.getState().standbySessions, {});
-
-console.log('✅ All terminalStore and IdleDetector frontend tests passed successfully!');
