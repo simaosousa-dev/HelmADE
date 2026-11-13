@@ -353,6 +353,13 @@ impl IdleDetector {
         }));
     }
 
+    /// Drops everything tracked about a session that has ended.
+    pub fn forget_session(&self, session_id: &str) {
+        if let Ok(mut sessions) = self.sessions.lock() {
+            sessions.remove(session_id);
+        }
+    }
+
     /// Obtém o estado completo de inatividade de uma sessão.
     pub fn get_session_status(&self, session_id: &str) -> SessionStatusPayload {
         let sessions = match self.sessions.lock() {
